@@ -55,6 +55,8 @@ def render_sidebar() -> Tuple[
             "data_estudo":      datetime.now().strftime("%Y-%m-%d"),
         }
 
+        _render_history_panel(tag_eq, meta)
+
         st.divider()
         st.markdown(
             '<p style="font-size:13px;font-weight:600;color:#DEF7FF;'
@@ -74,6 +76,38 @@ def render_sidebar() -> Tuple[
             return _render_rich_simulator(meta, tipo_eq, tag_eq)
         else:
             return _render_upload(meta)
+
+
+def _render_history_panel(tag: str, meta: Dict[str, Any]) -> None:
+    """Painel de histórico acumulado — mostra registros existentes e opção de usar/limpar."""
+    try:
+        hist = api.history_load(tag)
+    except Exception:
+        hist = None
+
+    if hist:
+        n = len(hist)
+        with st.expander(f"📂 Histórico: {n} registros acumulados", expanded=False):
+            st.caption(f"TAG **{tag}** possui {n} TBFs persistidos de sessões anteriores.")
+            use_hist = st.checkbox(
+                "Incluir histórico na análise",
+                value=True,
+                key="use_history",
+                help="Combina os dados novos com o histórico para treinar com mais dados.",
+            )
+            st.session_state["history_records"] = hist if use_hist else None
+
+            if st.button("🗑️ Apagar histórico", key="del_history"):
+                try:
+                    api.history_delete(tag)
+                    st.session_state["history_records"] = None
+                    st.success("Histórico removido.")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erro: {e}")
+    else:
+        st.session_state["history_records"] = None
+        st.caption(f"📂 Sem histórico para **{tag}** — será criado após a primeira análise.")
 
 
 def _render_thresholds() -> None:

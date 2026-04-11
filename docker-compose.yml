@@ -18,6 +18,7 @@ services:
       - ./backend:/app/backend        # hot-reload em desenvolvimento
       - ./images:/app/images
       - apm_models:/app/backend/models
+      - apm_history:/app/backend/history
     environment:
       - PYTHONPATH=/app
       - TZ=America/Sao_Paulo
@@ -89,5 +90,7 @@ networks:
 volumes:
   apm_models:
     name: apm_models_data
+  apm_history:
+    name: apm_history_data
   redis_data:
     name: apm_redis_data

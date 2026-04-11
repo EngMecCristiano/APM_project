@@ -200,6 +200,36 @@ def generate_pdf(
     return r.content
 
 
+# ─── History ──────────────────────────────────────────────────────────────────
+
+def history_save(tag: str, records: List[Dict], meta: Dict) -> Dict:
+    """Salva os records da sessão no histórico persistido do ativo."""
+    return _post("/history/save", {"tag": tag, "records": records, "meta": meta})
+
+
+def history_load(tag: str) -> Optional[List[Dict]]:
+    """Carrega histórico acumulado do ativo. Retorna None se não existir."""
+    try:
+        data = _get(f"/history/load/{tag}")
+        return data.get("records")
+    except BackendError as e:
+        if e.status == 404:
+            return None
+        raise
+
+
+def history_assets() -> List[Dict]:
+    """Lista ativos com histórico persistido."""
+    return _get("/history/assets")
+
+
+def history_delete(tag: str) -> None:
+    """Remove o histórico de um ativo."""
+    r = httpx.delete(f"{BASE}/history/{tag}", timeout=TIMEOUT)
+    if r.is_error:
+        _raise(r, f"/history/{tag}")
+
+
 # ─── Health ───────────────────────────────────────────────────────────────────
 
 def health_check() -> bool:

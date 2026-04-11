@@ -38,7 +38,7 @@ st.markdown(build_css(BG_PATH), unsafe_allow_html=True)
 # ─── Estado da sessão ────────────────────────────────────────────────────────
 
 def _init_state() -> None:
-    for key in ("records", "meta", "fit", "rul", "ca", "audit", "ml", "rich_df"):
+    for key in ("records", "meta", "fit", "rul", "ca", "audit", "ml", "rich_df", "history_records"):
         if key not in st.session_state:
             st.session_state[key] = None
     if "rul_threshold" not in st.session_state:
@@ -144,7 +144,18 @@ def main() -> None:
     meta, records, triggered, rich_df = render_sidebar()
 
     if triggered and records:
-        st.session_state.records  = records
+        # ── Mesclar histórico acumulado (se usuário optou por incluir) ────────
+        hist_records = st.session_state.get("history_records") or []
+        if hist_records:
+            # Deduplica por Tempo_Acumulado — o histórico pode ter sobreposição
+            seen = {r["Tempo_Acumulado"] for r in records}
+            extra = [r for r in hist_records if r["Tempo_Acumulado"] not in seen]
+            combined = extra + records          # histórico primeiro (mais antigo)
+            st.toast(f"📂 Histórico: +{len(extra)} registros anteriores incluídos na análise.")
+        else:
+            combined = records
+
+        st.session_state.records  = combined
         st.session_state.meta     = meta
         st.session_state.rich_df  = rich_df  # None se não for simulação enriquecida
 
@@ -152,7 +163,7 @@ def main() -> None:
 
         try:
             with st.spinner("Ajustando modelos paramétricos..."):
-                st.session_state.fit = api.fit_models(records)
+                st.session_state.fit = api.fit_models(combined)
         except BackendError as e:
             st.error(f"❌ Falha no ajuste de modelos: {e.detail}")
             _analysis_ok = False
@@ -182,7 +193,7 @@ def main() -> None:
         if _analysis_ok:
             try:
                 with st.spinner("Processando Crow-AMSAA (MLE)..."):
-                    st.session_state.ca = api.crow_amsaa(records)
+                    st.session_state.ca = api.crow_amsaa(combined)
             except BackendError as e:
                 st.error(f"❌ Falha na análise Crow-AMSAA: {e.detail}")
             except Exception as e:
@@ -191,7 +202,7 @@ def main() -> None:
             try:
                 with st.spinner("Gerando auditoria estatística..."):
                     st.session_state.audit = api.audit(
-                        records=records,
+                        records=combined,
                         dist_params=best,
                         horimetro_atual=meta["horimetro_atual"],
                     )
@@ -203,7 +214,7 @@ def main() -> None:
             try:
                 with st.spinner("Treinando modelos ML..."):
                     st.session_state.ml = api.ml_analyze(
-                        records=records,
+                        records=combined,
                         horimetro_atual=meta["horimetro_atual"],
                         rul_data=st.session_state.rul,
                         weibull_params=best,
@@ -213,6 +224,18 @@ def main() -> None:
                 st.error(f"❌ Falha na análise ML: {e.detail}")
             except Exception as e:
                 st.error(f"❌ Erro inesperado no ML: {e}")
+
+            # ── Persistir sessão no histórico do ativo ────────────────────────
+            try:
+                saved = api.history_save(
+                    tag=meta["tag"],
+                    records=records,   # salva apenas os novos (sem o histórico já persistido)
+                    meta=meta,
+                )
+                total = saved.get("total_registros", len(records))
+                st.toast(f"💾 Histórico salvo — {total} registros acumulados para {meta['tag']}.")
+            except Exception:
+                pass  # falha silenciosa — não interrompe a análise
 
     if st.session_state.records is None:
         display_header(meta or {})

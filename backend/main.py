@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.config.settings import (
     API_TITLE, API_VERSION, API_PREFIX, CORS_ORIGINS,
 )
-from backend.routers import analysis, ml, maintenance, report
+from backend.routers import analysis, ml, maintenance, report, history
 from backend.schemas.models import HealthResponse
 
 
@@ -55,6 +55,7 @@ app.include_router(analysis.router,     prefix=API_PREFIX)
 app.include_router(ml.router,           prefix=API_PREFIX)
 app.include_router(maintenance.router,  prefix=API_PREFIX)
 app.include_router(report.router,       prefix=API_PREFIX)
+app.include_router(history.router,      prefix=API_PREFIX)
 
 
 # ─── Health ───────────────────────────────────────────────────────────────────
