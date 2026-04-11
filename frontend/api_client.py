@@ -71,14 +71,21 @@ def simulate(
     noise_pct: float,
     outlier_pct: float,
     aging_pct: float,
+    custom_beta: Optional[float] = None,
+    custom_eta:  Optional[float] = None,
 ) -> List[Dict]:
-    return _post("/analysis/simulate", {
+    body: Dict[str, Any] = {
         "n_samples":      n_samples,
         "equipment_type": equipment_type,
         "noise_pct":      noise_pct,
         "outlier_pct":    outlier_pct,
         "aging_pct":      aging_pct,
-    })
+    }
+    if custom_beta is not None:
+        body["custom_beta"] = custom_beta
+    if custom_eta is not None:
+        body["custom_eta"] = custom_eta
+    return _post("/analysis/simulate", body)
 
 
 def simulate_rich(
@@ -90,8 +97,10 @@ def simulate_rich(
     tag_ativo: str = "EQP-01A",
     start_date: str = "2021-01-01",
     preco_produto_brl_t: float = 45.0,
+    custom_beta: Optional[float] = None,
+    custom_eta:  Optional[float] = None,
 ) -> List[Dict]:
-    return _post("/analysis/simulate-rich", {
+    body: Dict[str, Any] = {
         "n_samples":           n_samples,
         "equipment_type":      equipment_type,
         "noise_pct":           noise_pct,
@@ -100,7 +109,12 @@ def simulate_rich(
         "tag_ativo":           tag_ativo,
         "start_date":          start_date,
         "preco_produto_brl_t": preco_produto_brl_t,
-    })
+    }
+    if custom_beta is not None:
+        body["custom_beta"] = custom_beta
+    if custom_eta is not None:
+        body["custom_eta"] = custom_eta
+    return _post("/analysis/simulate-rich", body)
 
 
 def get_csv_columns(file_bytes: bytes, filename: str) -> Dict:

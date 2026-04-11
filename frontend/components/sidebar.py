@@ -16,7 +16,12 @@ EQUIPMENT_TYPES = [
     "Peneira Vibratória",
     "Bomba de Polpa",
     "Transportador de Correia",
+    "Outro (personalizado)",
 ]
+
+# Parâmetros Weibull padrão para equipamento personalizado
+CUSTOM_BETA_DEFAULT = 1.5
+CUSTOM_ETA_DEFAULT  = 1000.0
 
 
 def render_sidebar() -> Tuple[
@@ -40,7 +45,43 @@ def render_sidebar() -> Tuple[
         )
         st.divider()
 
-        tipo_eq  = st.selectbox("Classe do Ativo", EQUIPMENT_TYPES)
+        tipo_sel = st.selectbox("Classe do Ativo", EQUIPMENT_TYPES)
+
+        # ── Equipamento personalizado ─────────────────────────────────────────
+        custom_beta: Optional[float] = None
+        custom_eta:  Optional[float] = None
+
+        if tipo_sel == "Outro (personalizado)":
+            tipo_eq = st.text_input(
+                "Nome do Equipamento",
+                value="",
+                placeholder="ex: Compressor de Ar, Turbina a Vapor...",
+            )
+            with st.expander("⚙️ Parâmetros Weibull do Equipamento", expanded=True):
+                st.caption(
+                    "Informe os parâmetros da distribuição Weibull que caracteriza "
+                    "o comportamento de falha deste equipamento."
+                )
+                c1, c2 = st.columns(2)
+                with c1:
+                    custom_beta = st.number_input(
+                        "β — forma",
+                        min_value=0.1, max_value=10.0,
+                        value=CUSTOM_BETA_DEFAULT, step=0.1,
+                        help="β < 1: mortalidade infantil  |  β = 1: falhas aleatórias  |  β > 1: desgaste",
+                    )
+                with c2:
+                    custom_eta = st.number_input(
+                        "η — escala (h)",
+                        min_value=10.0, max_value=50000.0,
+                        value=CUSTOM_ETA_DEFAULT, step=100.0,
+                        help="Tempo característico de vida em horas (63,2% dos equipamentos falharam até η).",
+                    )
+            if not tipo_eq:
+                tipo_eq = "Equipamento Personalizado"
+        else:
+            tipo_eq = tipo_sel
+
         tag_eq   = st.text_input("TAG Operacional", value="BRT-01A")
         serie_eq = st.text_input("Número de Série", value="SN-998822",
                                  help="Identificador único para rastreabilidade.")
@@ -71,9 +112,9 @@ def render_sidebar() -> Tuple[
         st.divider()
 
         if mode == "Simulador Paramétrico":
-            return _render_simulator(meta, tipo_eq)
+            return _render_simulator(meta, tipo_eq, custom_beta, custom_eta)
         elif mode == "Simulação Enriquecida (ISO 14224)":
-            return _render_rich_simulator(meta, tipo_eq, tag_eq)
+            return _render_rich_simulator(meta, tipo_eq, tag_eq, custom_beta, custom_eta)
         else:
             return _render_upload(meta)
 
@@ -164,7 +205,9 @@ def _render_thresholds() -> None:
 # ─── Simulador básico ─────────────────────────────────────────────────────────
 
 def _render_simulator(
-    meta: Dict[str, Any], tipo_eq: str
+    meta: Dict[str, Any], tipo_eq: str,
+    custom_beta: Optional[float] = None,
+    custom_eta:  Optional[float] = None,
 ) -> Tuple[Optional[Dict], Optional[List[Dict]], bool, None]:
     col1, col2 = st.columns(2)
     with col1:
@@ -181,7 +224,10 @@ def _render_simulator(
 
     if st.button("▶ Executar Simulação", type="primary", use_container_width=True):
         with st.spinner("Gerando dados simulados..."):
-            records = api.simulate(int(n), tipo_eq, noise, outlier, aging)
+            records = api.simulate(
+                int(n), tipo_eq, noise, outlier, aging,
+                custom_beta=custom_beta, custom_eta=custom_eta,
+            )
         st.success(f"✅ {len(records)} registros gerados.")
         return meta, records, True, None
 
@@ -191,7 +237,9 @@ def _render_simulator(
 # ─── Simulador enriquecido ────────────────────────────────────────────────────
 
 def _render_rich_simulator(
-    meta: Dict[str, Any], tipo_eq: str, tag_eq: str
+    meta: Dict[str, Any], tipo_eq: str, tag_eq: str,
+    custom_beta: Optional[float] = None,
+    custom_eta:  Optional[float] = None,
 ) -> Tuple[Optional[Dict], Optional[List[Dict]], bool, Optional[pd.DataFrame]]:
 
     st.caption("Gera dataset completo: modo de falha, causa raiz, TTR, datas, custo e produção perdida.")
@@ -224,6 +272,8 @@ def _render_rich_simulator(
                 tag_ativo=tag_eq,
                 start_date=start_date.strftime("%Y-%m-%d"),
                 preco_produto_brl_t=float(preco_t),
+                custom_beta=custom_beta,
+                custom_eta=custom_eta,
             )
 
         rich_df = pd.DataFrame(raw)

@@ -42,6 +42,8 @@ def simulate_rich(req: RichSimulationRequest) -> List[RichDataRecord]:
         tag_ativo=req.tag_ativo,
         start_date=req.start_date,
         preco_produto_brl_t=req.preco_produto_brl_t,
+        custom_beta=req.custom_beta,
+        custom_eta=req.custom_eta,
     )
     return df.to_dict(orient="records")
 
@@ -55,6 +57,8 @@ def simulate(req: SimulationRequest) -> List[DataRecord]:
     return engine.generate_synthetic_data(
         req.n_samples, req.equipment_type,
         req.noise_pct, req.outlier_pct, req.aging_pct,
+        custom_beta=req.custom_beta,
+        custom_eta=req.custom_eta,
     )
 
 

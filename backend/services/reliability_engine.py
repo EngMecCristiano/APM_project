@@ -117,8 +117,14 @@ class ReliabilityEngine:
         noise_pct: float,
         outlier_pct: float,
         aging_pct: float,
+        custom_beta: float | None = None,
+        custom_eta:  float | None = None,
     ) -> List[DataRecord]:
         profile = EQUIPMENT_PROFILES.get(equipment_type, DEFAULT_PROFILE)
+        if custom_beta is not None:
+            profile = {**profile, "beta": custom_beta}
+        if custom_eta is not None:
+            profile = {**profile, "eta": custom_eta}
         tbf_base = weibull_min.rvs(profile["beta"], scale=profile["eta"], size=n_samples)
         noise = np.random.normal(0.0, profile["eta"] * noise_pct / 100.0, size=n_samples)
         tbf_noisy = tbf_base + noise

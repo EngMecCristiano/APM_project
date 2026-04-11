@@ -343,10 +343,16 @@ class RichSyntheticGenerator:
         tag_ativo: str = "EQP-01A",
         start_date: str = "2021-01-01",
         preco_produto_brl_t: float = 45.0,
+        custom_beta: float | None = None,
+        custom_eta:  float | None = None,
     ) -> pd.DataFrame:
         rng = np.random.default_rng(42)
 
         profile = EQUIPMENT_PROFILES.get(equipment_type, DEFAULT_PROFILE)
+        if custom_beta is not None:
+            profile = {**profile, "beta": custom_beta}
+        if custom_eta is not None:
+            profile = {**profile, "eta": custom_eta}
         beta, eta = profile["beta"], profile["eta"]
         ctx = OPERATIONAL_CONTEXT.get(equipment_type, list(OPERATIONAL_CONTEXT.values())[0])
         scenarios = FAILURE_SCENARIOS.get(equipment_type, FAILURE_SCENARIOS["Britador Cônico"])
