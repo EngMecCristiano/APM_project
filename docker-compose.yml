@@ -1,0 +1,93 @@
+# ==============================================================================
+# APM Analytics — Orquestração de Microserviços
+# Arquitetura: Backend FastAPI (porta 8002) + Frontend Streamlit (porta 8502)
+# Portas 8001/8501 reservadas para Project_AR2 (synapse/punter-master)
+# ==============================================================================
+
+services:
+
+  # ── Backend FastAPI — toda a computação matemática e ML ─────────────────────
+  apm_backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: apm_backend
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./backend:/app/backend        # hot-reload em desenvolvimento
+      - ./images:/app/images
+      - apm_models:/app/backend/models
+    environment:
+      - PYTHONPATH=/app
+      - TZ=America/Sao_Paulo
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - apm_network
+
+  # ── Frontend Streamlit — cliente fino, apenas UI e chamadas à API ─────────
+  apm_frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: apm_frontend
+    ports:
+      - "8502:8501"
+    volumes:
+      - ./frontend:/app/frontend      # hot-reload em desenvolvimento
+      - ./images:/app/images
+    environment:
+      - BACKEND_URL=http://apm_backend:8002
+      - PYTHONPATH=/app
+      - TZ=America/Sao_Paulo
+    depends_on:
+      apm_backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - apm_network
+
+  # ── Opcional: Redis para cache de sessão (perfil: cache) ──────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: apm_redis
+    profiles: ["cache", "full"]
+    ports:
+      - "6382:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    networks:
+      - apm_network
+
+networks:
+  apm_network:
+    driver: bridge
+    name: apm_network
+
+volumes:
+  apm_models:
+    name: apm_models_data
+  redis_data:
+    name: apm_redis_data
