@@ -14,8 +14,25 @@ def _load_bg(path: Path) -> str | None:
 
 def build_css(bg_image_path: Path | None = None) -> str:
     bg_b64 = _load_bg(bg_image_path) if bg_image_path else None
-    bg_rule = (
-        f'background-image: url("data:image/png;base64,{bg_b64}");'
+    bg_pseudo = (
+        f"""
+.stApp::before {{
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: url("data:image/png;base64,{bg_b64}");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    opacity: 0.18;
+    z-index: 0;
+    pointer-events: none;
+}}
+.stApp > * {{
+    position: relative;
+    z-index: 1;
+}}"""
         if bg_b64 else ""
     )
 
@@ -24,13 +41,9 @@ def build_css(bg_image_path: Path | None = None) -> str:
 
 /* ── App (fundo global) ─────────────────────────────────────────────────── */
 .stApp {{
-    {bg_rule}
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
     background-color: #01050A;
 }}
+{bg_pseudo}
 
 /* ── Sidebar ─────────────────────────────────────────────────────────────── */
 [data-testid="stSidebar"] {{
