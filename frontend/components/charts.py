@@ -47,10 +47,13 @@ def plot_reliability_function(
 ) -> go.Figure:
     fig = go.Figure()
 
-    if show_ci and func in ("SF", "CDF", "CHF"):
+    if show_ci and func in ("SF", "CDF"):
+        # IC apenas para SF e CDF (probabilidades limitadas a [0,1])
         y = np.array(y_teorico)
-        fig.add_trace(go.Scatter(x=t_plot, y=(y * 1.1).tolist(), line=dict(width=0), showlegend=False))
-        fig.add_trace(go.Scatter(x=t_plot, y=(y * 0.9).tolist(),
+        y_up = np.clip(y * 1.10, 0.0, 1.0).tolist()
+        y_lo = np.clip(y * 0.90, 0.0, 1.0).tolist()
+        fig.add_trace(go.Scatter(x=t_plot, y=y_up, line=dict(width=0), showlegend=False))
+        fig.add_trace(go.Scatter(x=t_plot, y=y_lo,
                                  fill="tonexty", fillcolor=COLORS["ci"],
                                  line=dict(width=0), name="IC 95%"))
 
@@ -63,8 +66,16 @@ def plot_reliability_function(
                              line=dict(color=COLORS["primary"], width=3),
                              name=f"Ajuste {model_name}"))
 
+    _y_label = {
+        "SF":  "R(t) — Probabilidade de Sobrevivência (0–1)",
+        "CDF": "F(t) — Probabilidade de Falha Acumulada (0–1)",
+        "PDF": "f(t) — Densidade de Probabilidade (1/h)",
+        "HF":  "h(t) — Taxa de Falha Instantânea (falhas/h)",
+        "CHF": "H(t) — Hazard Acumulado (adimensional, 0–∞)",
+    }.get(func, "Y")
+
     fig.update_layout(
-        title=f"[{func}] Análise Estocástica — {asset_tag}  (Probabilidade × Tempo h)",
+        title=f"[{func}] Análise Estocástica — {asset_tag}  ({_y_label} × Tempo h)",
         height=500,
     )
     return apply_theme(fig)
