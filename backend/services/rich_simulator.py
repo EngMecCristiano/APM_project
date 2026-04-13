@@ -343,9 +343,13 @@ class RichSyntheticGenerator:
         tag_ativo: str = "EQP-01A",
         start_date: str = "2021-01-01",
         preco_produto_brl_t: float = 45.0,
-        custom_beta: float | None = None,
-        custom_eta:  float | None = None,
+        custom_beta:  float | None = None,
+        custom_eta:   float | None = None,
+        custom_mu:    float | None = None,
+        custom_sigma: float | None = None,
+        custom_dist:  str   | None = None,
     ) -> pd.DataFrame:
+        from scipy.stats import lognorm as lognorm_dist
         rng = np.random.default_rng(42)
 
         profile = EQUIPMENT_PROFILES.get(equipment_type, DEFAULT_PROFILE)
@@ -359,10 +363,18 @@ class RichSyntheticGenerator:
         probs = np.array([s["prob"] for s in scenarios])
         probs /= probs.sum()
 
-        # ── 1. Gerar TBF (mesma lógica do simulador base) ──────────────────
-        tbf_base = weibull_min.rvs(beta, scale=eta, size=n_samples,
-                                   random_state=int(rng.integers(1e6)))
-        noise_arr = rng.normal(0.0, eta * noise_pct / 100.0, size=n_samples)
+        # ── 1. Gerar TBF (Weibull ou Lognormal personalizado) ──────────────
+        if custom_dist == "Lognormal" and custom_mu is not None and custom_sigma is not None:
+            eta_ref  = np.exp(custom_mu)
+            tbf_base = lognorm_dist.rvs(s=custom_sigma, scale=eta_ref,
+                                        size=n_samples,
+                                        random_state=int(rng.integers(1e6)))
+        else:
+            eta_ref  = eta
+            tbf_base = weibull_min.rvs(beta, scale=eta, size=n_samples,
+                                       random_state=int(rng.integers(1e6)))
+
+        noise_arr = rng.normal(0.0, eta_ref * noise_pct / 100.0, size=n_samples)
         tbf_noisy = tbf_base + noise_arr
 
         # Mortalidade infantil (outliers de curta duração)
@@ -370,7 +382,7 @@ class RichSyntheticGenerator:
         infant_idx = set()
         if n_out > 0:
             infant_idx_arr = rng.choice(n_samples, n_out, replace=False)
-            tbf_noisy[infant_idx_arr] = rng.exponential(eta * 0.08, size=n_out)
+            tbf_noisy[infant_idx_arr] = rng.exponential(eta_ref * 0.08, size=n_out)
             infant_idx = set(infant_idx_arr.tolist())
 
         # Fadiga sistêmica (degradação progressiva do TBF)

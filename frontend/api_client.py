@@ -71,8 +71,11 @@ def simulate(
     noise_pct: float,
     outlier_pct: float,
     aging_pct: float,
-    custom_beta: Optional[float] = None,
-    custom_eta:  Optional[float] = None,
+    custom_beta:  Optional[float] = None,
+    custom_eta:   Optional[float] = None,
+    custom_mu:    Optional[float] = None,
+    custom_sigma: Optional[float] = None,
+    custom_dist:  Optional[str]   = None,
 ) -> List[Dict]:
     body: Dict[str, Any] = {
         "n_samples":      n_samples,
@@ -81,10 +84,11 @@ def simulate(
         "outlier_pct":    outlier_pct,
         "aging_pct":      aging_pct,
     }
-    if custom_beta is not None:
-        body["custom_beta"] = custom_beta
-    if custom_eta is not None:
-        body["custom_eta"] = custom_eta
+    if custom_beta  is not None: body["custom_beta"]  = custom_beta
+    if custom_eta   is not None: body["custom_eta"]   = custom_eta
+    if custom_mu    is not None: body["custom_mu"]    = custom_mu
+    if custom_sigma is not None: body["custom_sigma"] = custom_sigma
+    if custom_dist  is not None: body["custom_dist"]  = custom_dist
     return _post("/analysis/simulate", body)
 
 
@@ -97,8 +101,11 @@ def simulate_rich(
     tag_ativo: str = "EQP-01A",
     start_date: str = "2021-01-01",
     preco_produto_brl_t: float = 45.0,
-    custom_beta: Optional[float] = None,
-    custom_eta:  Optional[float] = None,
+    custom_beta:  Optional[float] = None,
+    custom_eta:   Optional[float] = None,
+    custom_mu:    Optional[float] = None,
+    custom_sigma: Optional[float] = None,
+    custom_dist:  Optional[str]   = None,
 ) -> List[Dict]:
     body: Dict[str, Any] = {
         "n_samples":           n_samples,
@@ -110,10 +117,11 @@ def simulate_rich(
         "start_date":          start_date,
         "preco_produto_brl_t": preco_produto_brl_t,
     }
-    if custom_beta is not None:
-        body["custom_beta"] = custom_beta
-    if custom_eta is not None:
-        body["custom_eta"] = custom_eta
+    if custom_beta  is not None: body["custom_beta"]  = custom_beta
+    if custom_eta   is not None: body["custom_eta"]   = custom_eta
+    if custom_mu    is not None: body["custom_mu"]    = custom_mu
+    if custom_sigma is not None: body["custom_sigma"] = custom_sigma
+    if custom_dist  is not None: body["custom_dist"]  = custom_dist
     return _post("/analysis/simulate-rich", body)
 
 

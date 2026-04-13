@@ -22,6 +22,8 @@ EQUIPMENT_TYPES = [
 # Parâmetros Weibull padrão para equipamento personalizado
 CUSTOM_BETA_DEFAULT = 1.5
 CUSTOM_ETA_DEFAULT  = 1000.0
+CUSTOM_MU_DEFAULT   = 6.5    # ln(665 h) ≈ mediana ~665 h
+CUSTOM_SIGMA_DEFAULT = 0.8
 
 
 def render_sidebar() -> Tuple[
@@ -48,8 +50,11 @@ def render_sidebar() -> Tuple[
         tipo_sel = st.selectbox("Classe do Ativo", EQUIPMENT_TYPES)
 
         # ── Equipamento personalizado ─────────────────────────────────────────
-        custom_beta: Optional[float] = None
-        custom_eta:  Optional[float] = None
+        custom_beta:  Optional[float] = None
+        custom_eta:   Optional[float] = None
+        custom_mu:    Optional[float] = None
+        custom_sigma: Optional[float] = None
+        custom_dist:  Optional[str]   = None
 
         if tipo_sel == "Outro (personalizado)":
             tipo_eq = st.text_input(
@@ -57,26 +62,57 @@ def render_sidebar() -> Tuple[
                 value="",
                 placeholder="ex: Compressor de Ar, Turbina a Vapor...",
             )
-            with st.expander("⚙️ Parâmetros Weibull do Equipamento", expanded=True):
-                st.caption(
-                    "Informe os parâmetros da distribuição Weibull que caracteriza "
-                    "o comportamento de falha deste equipamento."
+            with st.expander("⚙️ Parâmetros do Simulador", expanded=True):
+                custom_dist = st.radio(
+                    "Distribuição base",
+                    ["Weibull", "Lognormal"],
+                    horizontal=True,
+                    help="Define a distribuição usada para gerar os TBFs sintéticos.",
                 )
-                c1, c2 = st.columns(2)
-                with c1:
-                    custom_beta = st.number_input(
-                        "β — forma",
-                        min_value=0.1, max_value=10.0,
-                        value=CUSTOM_BETA_DEFAULT, step=0.1,
-                        help="β < 1: mortalidade infantil  |  β = 1: falhas aleatórias  |  β > 1: desgaste",
+
+                if custom_dist == "Weibull":
+                    st.caption("Weibull — adequada para desgaste progressivo e mortalidade infantil.")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        custom_beta = st.number_input(
+                            "β — forma",
+                            min_value=0.1, max_value=10.0,
+                            value=CUSTOM_BETA_DEFAULT, step=0.1,
+                            help="β < 1: mortalidade infantil  |  β = 1: aleatório  |  β > 1: desgaste",
+                        )
+                    with c2:
+                        custom_eta = st.number_input(
+                            "η — escala (h)",
+                            min_value=10.0, max_value=50000.0,
+                            value=CUSTOM_ETA_DEFAULT, step=100.0,
+                            help="63,2% dos equipamentos falharam até η horas.",
+                        )
+                else:  # Lognormal
+                    st.caption("Lognormal — adequada para fadiga, corrosão e componentes eletrônicos.")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        custom_mu = st.number_input(
+                            "μ — log-média",
+                            min_value=1.0, max_value=12.0,
+                            value=CUSTOM_MU_DEFAULT, step=0.1,
+                            help="Logaritmo natural da mediana de vida. μ=6,5 → mediana ≈ 665 h.",
+                        )
+                    with c2:
+                        custom_sigma = st.number_input(
+                            "σ — log-desvio",
+                            min_value=0.05, max_value=3.0,
+                            value=CUSTOM_SIGMA_DEFAULT, step=0.05,
+                            help="Dispersão em escala log. Valores altos = alta variabilidade entre falhas.",
+                        )
+                    # Mostra mediana e percentis para orientar o usuário
+                    import math
+                    mediana = math.exp(custom_mu)
+                    p10 = math.exp(custom_mu - 1.28 * custom_sigma)
+                    p90 = math.exp(custom_mu + 1.28 * custom_sigma)
+                    st.caption(
+                        f"Mediana ≈ **{mediana:.0f} h** | P10 ≈ {p10:.0f} h | P90 ≈ {p90:.0f} h"
                     )
-                with c2:
-                    custom_eta = st.number_input(
-                        "η — escala (h)",
-                        min_value=10.0, max_value=50000.0,
-                        value=CUSTOM_ETA_DEFAULT, step=100.0,
-                        help="Tempo característico de vida em horas (63,2% dos equipamentos falharam até η).",
-                    )
+
             if not tipo_eq:
                 tipo_eq = "Equipamento Personalizado"
         else:
@@ -112,9 +148,9 @@ def render_sidebar() -> Tuple[
         st.divider()
 
         if mode == "Simulador Paramétrico":
-            return _render_simulator(meta, tipo_eq, custom_beta, custom_eta)
+            return _render_simulator(meta, tipo_eq, custom_beta, custom_eta, custom_mu, custom_sigma, custom_dist)
         elif mode == "Simulação Enriquecida (ISO 14224)":
-            return _render_rich_simulator(meta, tipo_eq, tag_eq, custom_beta, custom_eta)
+            return _render_rich_simulator(meta, tipo_eq, tag_eq, custom_beta, custom_eta, custom_mu, custom_sigma, custom_dist)
         else:
             return _render_upload(meta)
 
@@ -206,8 +242,11 @@ def _render_thresholds() -> None:
 
 def _render_simulator(
     meta: Dict[str, Any], tipo_eq: str,
-    custom_beta: Optional[float] = None,
-    custom_eta:  Optional[float] = None,
+    custom_beta:  Optional[float] = None,
+    custom_eta:   Optional[float] = None,
+    custom_mu:    Optional[float] = None,
+    custom_sigma: Optional[float] = None,
+    custom_dist:  Optional[str]   = None,
 ) -> Tuple[Optional[Dict], Optional[List[Dict]], bool, None]:
     col1, col2 = st.columns(2)
     with col1:
@@ -227,6 +266,8 @@ def _render_simulator(
             records = api.simulate(
                 int(n), tipo_eq, noise, outlier, aging,
                 custom_beta=custom_beta, custom_eta=custom_eta,
+                custom_mu=custom_mu, custom_sigma=custom_sigma,
+                custom_dist=custom_dist,
             )
         st.success(f"✅ {len(records)} registros gerados.")
         return meta, records, True, None
@@ -238,8 +279,11 @@ def _render_simulator(
 
 def _render_rich_simulator(
     meta: Dict[str, Any], tipo_eq: str, tag_eq: str,
-    custom_beta: Optional[float] = None,
-    custom_eta:  Optional[float] = None,
+    custom_beta:  Optional[float] = None,
+    custom_eta:   Optional[float] = None,
+    custom_mu:    Optional[float] = None,
+    custom_sigma: Optional[float] = None,
+    custom_dist:  Optional[str]   = None,
 ) -> Tuple[Optional[Dict], Optional[List[Dict]], bool, Optional[pd.DataFrame]]:
 
     st.caption("Gera dataset completo: modo de falha, causa raiz, TTR, datas, custo e produção perdida.")
@@ -274,6 +318,9 @@ def _render_rich_simulator(
                 preco_produto_brl_t=float(preco_t),
                 custom_beta=custom_beta,
                 custom_eta=custom_eta,
+                custom_mu=custom_mu,
+                custom_sigma=custom_sigma,
+                custom_dist=custom_dist,
             )
 
         rich_df = pd.DataFrame(raw)

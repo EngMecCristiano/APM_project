@@ -117,22 +117,34 @@ class ReliabilityEngine:
         noise_pct: float,
         outlier_pct: float,
         aging_pct: float,
-        custom_beta: float | None = None,
-        custom_eta:  float | None = None,
+        custom_beta:  float | None = None,
+        custom_eta:   float | None = None,
+        custom_mu:    float | None = None,
+        custom_sigma: float | None = None,
+        custom_dist:  str   | None = None,
     ) -> List[DataRecord]:
+        from scipy.stats import lognorm as lognorm_dist
+
         profile = EQUIPMENT_PROFILES.get(equipment_type, DEFAULT_PROFILE)
         if custom_beta is not None:
             profile = {**profile, "beta": custom_beta}
         if custom_eta is not None:
             profile = {**profile, "eta": custom_eta}
-        tbf_base = weibull_min.rvs(profile["beta"], scale=profile["eta"], size=n_samples)
-        noise = np.random.normal(0.0, profile["eta"] * noise_pct / 100.0, size=n_samples)
+
+        # ── Geração de TBF base: Weibull ou Lognormal ────────────────────────
+        if custom_dist == "Lognormal" and custom_mu is not None and custom_sigma is not None:
+            tbf_base = lognorm_dist.rvs(s=custom_sigma, scale=np.exp(custom_mu), size=n_samples)
+            eta_ref  = np.exp(custom_mu)   # referência para escala do ruído
+        else:
+            tbf_base = weibull_min.rvs(profile["beta"], scale=profile["eta"], size=n_samples)
+            eta_ref  = profile["eta"]
+        noise = np.random.normal(0.0, eta_ref * noise_pct / 100.0, size=n_samples)
         tbf_noisy = tbf_base + noise
 
         n_out = int(n_samples * outlier_pct / 100.0)
         if n_out > 0:
             idx = np.random.choice(n_samples, n_out, replace=False)
-            tbf_noisy[idx] = expon.rvs(loc=2.0, scale=profile["eta"] * 0.1, size=n_out)
+            tbf_noisy[idx] = expon.rvs(loc=2.0, scale=eta_ref * 0.1, size=n_out)
 
         k = (aging_pct / 100.0) / (n_samples * 0.5)
         aging = np.exp(-k * np.power(np.arange(n_samples), 1.5))

@@ -44,14 +44,17 @@ def simulate_rich(req: RichSimulationRequest) -> List[RichDataRecord]:
         preco_produto_brl_t=req.preco_produto_brl_t,
         custom_beta=req.custom_beta,
         custom_eta=req.custom_eta,
+        custom_mu=req.custom_mu,
+        custom_sigma=req.custom_sigma,
+        custom_dist=req.custom_dist,
     )
     return df.to_dict(orient="records")
 
 
-@router.post("/simulate", response_model=List[DataRecord], summary="Gera dados sintéticos Weibull")
+@router.post("/simulate", response_model=List[DataRecord], summary="Gera dados sintéticos Weibull/Lognormal")
 def simulate(req: SimulationRequest) -> List[DataRecord]:
     """
-    Simula n_samples registros TBF com perfil Weibull do equipamento selecionado,
+    Simula n_samples registros TBF com perfil Weibull ou Lognormal,
     adicionando ruído gaussiano, mortalidade infantil e fadiga sistêmica.
     """
     return engine.generate_synthetic_data(
@@ -59,6 +62,9 @@ def simulate(req: SimulationRequest) -> List[DataRecord]:
         req.noise_pct, req.outlier_pct, req.aging_pct,
         custom_beta=req.custom_beta,
         custom_eta=req.custom_eta,
+        custom_mu=req.custom_mu,
+        custom_sigma=req.custom_sigma,
+        custom_dist=req.custom_dist,
     )
 
 

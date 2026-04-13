@@ -22,13 +22,18 @@ class AssetMeta(BaseModel):
 # ─── Entrada de dados ─────────────────────────────────────────────────────────
 
 class SimulationRequest(BaseModel):
-    n_samples:      int            = Field(500,  ge=100, le=1500)
-    equipment_type: str            = "Britador Cônico"
-    noise_pct:      float          = Field(15.0, ge=0.0, le=50.0)
-    outlier_pct:    float          = Field(5.0,  ge=0.0, le=20.0)
-    aging_pct:      float          = Field(1.5,  ge=0.0, le=5.0)
+    n_samples:      int             = Field(500,  ge=100, le=1500)
+    equipment_type: str             = "Britador Cônico"
+    noise_pct:      float           = Field(15.0, ge=0.0, le=50.0)
+    outlier_pct:    float           = Field(5.0,  ge=0.0, le=20.0)
+    aging_pct:      float           = Field(1.5,  ge=0.0, le=5.0)
+    # Weibull personalizado
     custom_beta:    Optional[float] = Field(None, gt=0.0, le=10.0)
     custom_eta:     Optional[float] = Field(None, gt=0.0)
+    # Lognormal personalizado
+    custom_mu:      Optional[float] = Field(None, ge=1.0, le=12.0)
+    custom_sigma:   Optional[float] = Field(None, gt=0.0, le=3.0)
+    custom_dist:    Optional[str]   = None   # "Weibull" | "Lognormal"
 
 
 class RichSimulationRequest(SimulationRequest):
