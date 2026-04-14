@@ -254,9 +254,9 @@ def _render_simulator(
     with col2:
         n = st.number_input("Valor exato", 100, 1500, n, 50, key="n_exact")
 
-    noise   = st.slider("Ruído Gaussiano (%)",     0.0, 50.0, 15.0, 1.0)
-    outlier = st.slider("Mortalidade Infantil (%)", 0.0, 20.0,  5.0, 1.0)
-    aging   = st.slider("Fadiga Sistêmica (%)",     0.0,  5.0,  1.5, 0.1)
+    noise   = st.slider("Ruído Gaussiano (%)",     0.0, 50.0,  0.0, 1.0)
+    outlier = st.slider("Mortalidade Infantil (%)", 0.0, 20.0,  0.0, 1.0)
+    aging   = st.slider("Fadiga Sistêmica (%)",     0.0,  5.0,  0.0, 0.1)
     st.divider()
 
     _render_thresholds()
@@ -294,9 +294,9 @@ def _render_rich_simulator(
     with col2:
         n = st.number_input("Valor exato", 100, 1500, n, 50, key="rich_n_exact")
 
-    noise   = st.slider("Ruído Gaussiano (%)",     0.0, 50.0, 15.0, 1.0, key="rich_noise")
-    outlier = st.slider("Mortalidade Infantil (%)", 0.0, 20.0,  5.0, 1.0, key="rich_out")
-    aging   = st.slider("Fadiga Sistêmica (%)",     0.0,  5.0,  1.5, 0.1, key="rich_aging")
+    noise   = st.slider("Ruído Gaussiano (%)",     0.0, 50.0,  0.0, 1.0, key="rich_noise")
+    outlier = st.slider("Mortalidade Infantil (%)", 0.0, 20.0,  0.0, 1.0, key="rich_out")
+    aging   = st.slider("Fadiga Sistêmica (%)",     0.0,  5.0,  0.0, 0.1, key="rich_aging")
     st.divider()
 
     start_date  = st.date_input("Data de Início do Histórico", value=datetime(2021, 1, 1))
