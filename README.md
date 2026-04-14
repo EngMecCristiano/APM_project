@@ -48,7 +48,7 @@ Combina **Engenharia de Confiabilidade clássica** (Weibull, Lognormal, Crow-AMS
 - Seleção automática por critério AICc
 - Kaplan-Meier sobreposto à curva paramétrica
 - QQ Plot para validação do ajuste
-- Unidades corretas por função: SF, CDF, PDF, HF, CHF
+  Representação gráfica das funções: SF, CDF, PDF, HF, CHF
 
 ### Vida Útil Remanescente (RUL)
 - Confiabilidade Condicional `R(t|T₀) = R(T₀+t) / R(T₀)`
