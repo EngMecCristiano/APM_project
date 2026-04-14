@@ -146,8 +146,9 @@ class ReliabilityEngine:
             idx = np.random.choice(n_samples, n_out, replace=False)
             tbf_noisy[idx] = expon.rvs(loc=2.0, scale=eta_ref * 0.1, size=n_out)
 
-        k = (aging_pct / 100.0) / (n_samples * 0.5)
-        aging = np.exp(-k * np.power(np.arange(n_samples), 1.5))
+        # Normaliza posição por n_samples → efeito consistente independente de N
+        normalized_pos = np.arange(n_samples) / max(n_samples - 1, 1)
+        aging = np.exp(-(aging_pct / 100.0) * np.power(normalized_pos, 1.5))
         tbf = np.maximum(np.round(tbf_noisy * aging / 10.0) * 10.0, 2.0)
 
         cum = np.cumsum(tbf)

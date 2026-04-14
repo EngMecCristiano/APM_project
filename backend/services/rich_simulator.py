@@ -386,8 +386,8 @@ class RichSyntheticGenerator:
             infant_idx = set(infant_idx_arr.tolist())
 
         # Fadiga sistêmica (degradação progressiva do TBF)
-        k = (aging_pct / 100.0) / (n_samples * 0.5)
-        aging_arr = np.exp(-k * np.power(np.arange(n_samples), 1.5))
+        normalized_pos = np.arange(n_samples) / max(n_samples - 1, 1)
+        aging_arr = np.exp(-(aging_pct / 100.0) * np.power(normalized_pos, 1.5))
         tbf = np.maximum(np.round(tbf_noisy * aging_arr / 10.0) * 10.0, 2.0)
 
         # Censura: 15% dos registros
