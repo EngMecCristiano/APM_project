@@ -78,7 +78,7 @@ def plot_reliability_function(
     fig.update_layout(
         title=f"[{func}] Análise Estocástica — {asset_tag}  ({_y_label} × Tempo h)",
         height=380,
-        yaxis=dict(range=y_range, cliponaxis=True),
+        yaxis=dict(range=y_range),
     )
     return apply_theme(fig)
 
