@@ -1,23 +1,39 @@
 # APM Analytics — Asset Performance Management
 
-Sistema de análise de confiabilidade e manutenção preditiva para equipamentos industriais, com foco na indústria de mineração.
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com)
+![Status](https://img.shields.io/badge/status-production-brightgreen)
+![Python](https://img.shields.io/badge/python-3.12-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.110-009688)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.32-FF4B4B)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-Combina **Engenharia de Confiabilidade clássica** (Weibull, Crow-AMSAA, RUL, PMO) com **Machine Learning** (Random Forest, Isolation Forest, LSTM) em uma arquitetura de microserviços containerizada.
+Sistema de análise de confiabilidade e manutenção preditiva para equipamentos industriais.
+
+Combina **Engenharia de Confiabilidade clássica** (Weibull, Crow-AMSAA, RUL, PMO) com **Machine Learning** (Random Forest, Isolation Forest) em uma arquitetura de microserviços containerizada.
+
+---
+
+## Demo ao Vivo
+
+**[https://apm-app-production.up.railway.app](https://apm-app-production.up.railway.app)**
+
+> Acesse, selecione um equipamento, clique em **Executar Simulação** e explore os resultados.
 
 ---
 
 ## Arquitetura
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                   Docker Compose                    │
-│                                                     │
-│  ┌──────────────────┐     ┌──────────────────────┐  │
-│  │  Frontend        │────▶│  Backend             │  │
-│  │  Streamlit       │     │  FastAPI             │  │
-│  │  porta 8502      │     │  porta 8002          │  │
-│  └──────────────────┘     └──────────────────────┘  │
-└─────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                   Docker Compose / Railway              │
+│                                                         │
+│  ┌──────────────────┐   REST    ┌──────────────────────┐│
+│  │  Frontend        │──────────▶│  Backend             ││
+│  │  Streamlit       │           │  FastAPI             ││
+│  │  porta 8502      │           │  porta 8002          ││
+│  └──────────────────┘           └──────────────────────┘│
+└─────────────────────────────────────────────────────────┘
 ```
 
 - **Backend (FastAPI)** — toda a computação: ajuste de distribuições, MLE, ML, RUL, relatório PDF
@@ -32,6 +48,7 @@ Combina **Engenharia de Confiabilidade clássica** (Weibull, Crow-AMSAA, RUL, PM
 - Seleção automática por critério AICc
 - Kaplan-Meier sobreposto à curva paramétrica
 - QQ Plot para validação do ajuste
+- Unidades corretas por função: SF, CDF, PDF, HF, CHF
 
 ### Vida Útil Remanescente (RUL)
 - Confiabilidade Condicional `R(t|T₀) = R(T₀+t) / R(T₀)`
@@ -56,8 +73,15 @@ Combina **Engenharia de Confiabilidade clássica** (Weibull, Crow-AMSAA, RUL, PM
 - Relação custo preventivo / custo corretivo configurável
 
 ### Simulação de Dados
-- Simulador paramétrico com ruído gaussiano, mortalidade infantil e fadiga sistêmica
+- Simulador paramétrico Weibull e Lognormal com ruído gaussiano, mortalidade infantil e fadiga sistêmica
+- Equipamento personalizado com parâmetros β/η (Weibull) ou μ/σ (Lognormal)
 - Simulação enriquecida ISO 14224: modo de falha, causa raiz, TTR, custo, impacto de produção
+- Importação de CSV real com mapeamento de colunas
+
+### Histórico Persistido
+- TBFs acumulados por ativo em Parquet (volume Docker / Railway)
+- Merge automático entre sessões — modelo melhora com o tempo
+- Gestão por TAG: visualizar, incluir ou excluir histórico
 
 ### Relatório PDF
 - Gerado pelo backend com cabeçalho em todas as páginas
@@ -71,11 +95,12 @@ Combina **Engenharia de Confiabilidade clássica** (Weibull, Crow-AMSAA, RUL, PM
 |---|---|
 | **Backend** | Python 3.12, FastAPI, SciPy, NumPy, Pandas, Scikit-learn, ReportLab |
 | **Frontend** | Streamlit, Plotly |
-| **DevOps** | Docker, Docker Compose |
+| **DevOps** | Docker, Docker Compose, Railway |
+| **Dados** | Parquet (histórico), Pydantic (validação) |
 
 ---
 
-## Início Rápido
+## Início Rápido (local)
 
 ### Pré-requisitos
 - Docker e Docker Compose instalados
@@ -113,14 +138,14 @@ docker compose logs -f
 APM_project/
 ├── backend/
 │   ├── config/          # Configurações e settings
-│   ├── routers/         # Endpoints FastAPI (analysis, ml, maintenance, report)
+│   ├── routers/         # Endpoints FastAPI (analysis, ml, maintenance, report, history)
 │   ├── schemas/         # Modelos Pydantic
-│   ├── services/        # Lógica de negócio (reliability, ml, simulator)
+│   ├── services/        # Lógica de negócio (reliability, ml, simulator, history)
 │   ├── Dockerfile
 │   ├── main.py
 │   └── requirements.txt
 ├── frontend/
-│   ├── components/      # Dashboard, sidebar, charts, tabs
+│   ├── components/      # Dashboard, sidebar, charts, tabs, ui_helpers
 │   │   └── tabs/        # LDA, RUL, NHPP, ML, Audit
 │   ├── styles/          # Tema dark CSS + Plotly
 │   ├── Dockerfile
@@ -129,9 +154,10 @@ APM_project/
 │   └── requirements.txt
 ├── images/              # Assets visuais
 ├── docker-compose.yml
+├── railway.toml         # Configuração de deploy Railway
 ├── Makefile
 ├── .env.example
-└── Readme.md
+└── README.md
 ```
 
 ---
@@ -145,6 +171,16 @@ APP_ENV=development
 BACKEND_URL=http://apm_backend:8002
 TZ=America/Sao_Paulo
 ```
+
+### Deploy Railway
+Configure as variáveis em cada serviço no painel Railway:
+
+| Variável | Backend | Frontend |
+|---|---|---|
+| `BACKEND_URL` | — | URL pública do backend |
+| `PYTHONPATH` | `/app` | `/app` |
+| `TZ` | `America/Sao_Paulo` | `America/Sao_Paulo` |
+| `ALLOWED_ORIGINS` | URL pública do frontend | — |
 
 ---
 
@@ -166,6 +202,15 @@ docker compose logs -f apm_frontend
 # Acessar o container do backend
 docker exec -it apm_backend bash
 ```
+
+---
+
+## Segurança
+
+- CORS restrito à origem do frontend em produção (via `ALLOWED_ORIGINS`)
+- Sem credenciais ou segredos no repositório
+- Validação de entrada via Pydantic em todos os endpoints
+- Histórico isolado por TAG de ativo
 
 ---
 

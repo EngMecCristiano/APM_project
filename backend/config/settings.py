@@ -15,13 +15,23 @@ API_TITLE   = "APM Analytics API"
 API_VERSION = "2.0.0"
 API_PREFIX  = "/api/v1"
 
-CORS_ORIGINS: list[str] = [
-    "http://localhost:8501",
-    "http://localhost:8502",
-    "http://frontend:8501",
-    "http://localhost:3000",
-    "*",  # MVP — restringir em produção
-]
+def _cors_origins() -> list[str]:
+    """Lê ALLOWED_ORIGINS do ambiente (separados por vírgula).
+    Em produção, defina ALLOWED_ORIGINS com a URL exata do frontend.
+    Em desenvolvimento, permite localhost por padrão.
+    """
+    env_origins = os.getenv("ALLOWED_ORIGINS", "")
+    if env_origins:
+        return [o.strip() for o in env_origins.split(",") if o.strip()]
+    return [
+        "http://localhost:8501",
+        "http://localhost:8502",
+        "http://frontend:8501",
+        "http://localhost:3000",
+        "*",  # fallback desenvolvimento local
+    ]
+
+CORS_ORIGINS: list[str] = _cors_origins()
 
 # ─── Perfis de Equipamento (Weibull β, η) ─────────────────────────────────────
 EQUIPMENT_PROFILES: dict[str, dict[str, float]] = {
