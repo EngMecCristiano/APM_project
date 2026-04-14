@@ -12,6 +12,7 @@ import numpy as np
 from scipy.integrate import quad
 from scipy.optimize import minimize_scalar
 from scipy.stats import weibull_min
+from scipy.special import gamma as gamma_fn
 
 from backend.config.settings import PMO_T_RANGE_LOW, PMO_T_RANGE_HIGH, PMO_CURVE_POINTS
 from backend.schemas.models import PMORequest, PMOResult
@@ -45,8 +46,9 @@ class MaintenanceOptimizer:
         disponibilidade  = float(weibull_min.sf(tp_otimo, beta, scale=eta))
         custo_na_otimo   = taxa_custo(tp_otimo)
 
-        # Política puramente corretiva como referência: C/MTTF = Cu/η (normalizado)
-        custo_corr_puro  = cu / eta
+        # Política puramente corretiva: Cu / MTTF (MTTF = η × Γ(1+1/β))
+        mttf = eta * gamma_fn(1.0 + 1.0 / beta)
+        custo_corr_puro  = cu / mttf
         reducao_custo    = max(0.0, (custo_corr_puro - custo_na_otimo) / custo_corr_puro * 100)
 
         t_range    = np.linspace(eta * PMO_T_RANGE_LOW, eta * 2.5, PMO_CURVE_POINTS)

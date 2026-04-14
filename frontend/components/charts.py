@@ -44,18 +44,30 @@ def plot_reliability_function(
     show_ci: bool = True,
     emp_x: Optional[List[float]] = None,
     emp_y: Optional[List[float]] = None,
+    n_fail: int = 50,
 ) -> go.Figure:
     fig = go.Figure()
 
     if show_ci and func in ("SF", "CDF"):
-        # IC apenas para SF e CDF (probabilidades limitadas a [0,1])
+        # IC 95% via intervalo de Wald binomial: y ± 1.96 * sqrt(y*(1-y)/n)
+        # Estatisticamente correto para proporções com n suficiente
         y = np.array(y_teorico)
-        y_up = np.clip(y * 1.10, 0.0, 1.0).tolist()
-        y_lo = np.clip(y * 0.90, 0.0, 1.0).tolist()
-        fig.add_trace(go.Scatter(x=t_plot, y=y_up, line=dict(width=0), showlegend=False))
-        fig.add_trace(go.Scatter(x=t_plot, y=y_lo,
-                                 fill="tonexty", fillcolor=COLORS["ci"],
-                                 line=dict(width=0), name="IC 95%"))
+        n = max(n_fail, 1)
+        margin = 1.96 * np.sqrt(np.clip(y * (1.0 - y), 0, None) / n)
+        y_up = np.clip(y + margin, 0.0, 1.0).tolist()
+        y_lo = np.clip(y - margin, 0.0, 1.0).tolist()
+        # Adiciona upper primeiro (sem fill), lower com fill=tonexty → preenche entre os dois
+        fig.add_trace(go.Scatter(
+            x=t_plot, y=y_up,
+            mode="lines", line=dict(width=0),
+            showlegend=False, hoverinfo="skip",
+        ))
+        fig.add_trace(go.Scatter(
+            x=t_plot, y=y_lo,
+            mode="lines", line=dict(width=0),
+            fill="tonexty", fillcolor=COLORS["ci"],
+            name="IC 95%", hoverinfo="skip",
+        ))
 
     if emp_x:
         fig.add_trace(go.Scatter(x=emp_x, y=emp_y, mode="lines",

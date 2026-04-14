@@ -88,6 +88,22 @@ def ks_test_against_dist(tbf_failures: np.ndarray, params: DistributionParams) -
                             args=(0.0, 1.0 / params.lam))
 
 
+def _dist_ppf(params: DistributionParams, p: float) -> float:
+    """Retorna o quantil p da distribuição ajustada (inversa da CDF).
+    B10 = _dist_ppf(params, 0.10), B50 = _dist_ppf(params, 0.50), etc.
+    """
+    t = params.dist_type
+    if t == "weibull":
+        return weibull_min.ppf(p, params.beta, scale=params.eta)
+    if t == "lognormal":
+        return lognorm.ppf(p, s=params.sigma, scale=np.exp(params.mu))
+    if t == "normal":
+        return norm.ppf(p, loc=params.mu, scale=params.sigma)
+    if t == "exponential":
+        return expon.ppf(p, scale=1.0 / params.lam)
+    return float("nan")
+
+
 def theoretical_quantiles(tbf_failures: np.ndarray, params: DistributionParams) -> np.ndarray:
     """Quantis teóricos para QQ plot correto (vs. distribuição ajustada, não normalizado por max)."""
     n = len(tbf_failures)
@@ -144,7 +160,7 @@ class ReliabilityEngine:
         n_out = int(n_samples * outlier_pct / 100.0)
         if n_out > 0:
             idx = np.random.choice(n_samples, n_out, replace=False)
-            tbf_noisy[idx] = expon.rvs(loc=2.0, scale=eta_ref * 0.1, size=n_out)
+            tbf_noisy[idx] = expon.rvs(loc=2.0, scale=eta_ref * 0.08, size=n_out)
 
         # Normaliza posição por n_samples → efeito consistente independente de N
         normalized_pos = np.arange(n_samples) / max(n_samples - 1, 1)
@@ -359,17 +375,18 @@ class ReliabilityEngine:
             if horimetro_atual > 0 else 0.0
         )
 
-        # B-lives
-        b10 = float(np.percentile(tbf_fail, 10))
-        b50 = float(np.percentile(tbf_fail, 50))
-        b90 = float(np.percentile(tbf_fail, 90))
+        # B-lives — calculadas pela distribuição ajustada (não dados empíricos)
+        # B10 = tempo quando 10% falharam = F(t)=0.10 = SF(t)=0.90
+        b10 = float(_dist_ppf(params, 0.10))
+        b50 = float(_dist_ppf(params, 0.50))
+        b90 = float(_dist_ppf(params, 0.90))
 
-        # Percentis
+        # Percentis — distribuição ajustada
         percentis_vals = [1, 5, 10, 25, 50, 75, 90, 95, 99]
         percentiles = [
             {
                 "percentile": p,
-                "tbf_h": float(np.percentile(tbf_fail, p)),
+                "tbf_h": float(_dist_ppf(params, p / 100.0)),
                 "label": (
                     "Vida extremamente baixa" if p <= 5 else
                     "Vida baixa"              if p <= 10 else

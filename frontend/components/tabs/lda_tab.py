@@ -33,7 +33,7 @@ def render(records: List[Dict], fit: Dict[str, Any], meta: Dict[str, Any]) -> No
         func = st.selectbox("Função de Confiabilidade", ["SF", "PDF", "CDF", "HF", "CHF"],
                             help="SF = Sobrevivência | PDF = Densidade | CDF = Acumulada | HF = Taxa de Falha | CHF = Hazard Acumulado")
     with col_ci:
-        show_ci = st.checkbox("IC 95%", value=True, help="Faixa de incerteza aproximada ±10% ao redor da curva teórica")
+        show_ci = st.checkbox("IC 95%", value=True, help="Intervalo de confiança 95% (Wald binomial) baseado no número de falhas observadas")
 
     tbf_vals  = [r["TBF"] for r in records]
     tbf_fail  = [r["TBF"] for r in records if r["Falha"] == 1]
@@ -53,6 +53,7 @@ def render(records: List[Dict], fit: Dict[str, Any], meta: Dict[str, Any]) -> No
         model_name=best["model_name"],
         show_ci=show_ci,
         emp_x=emp_x, emp_y=emp_y,
+        n_fail=len(tbf_fail),
     )
     st.plotly_chart(fig, use_container_width=True)
 
