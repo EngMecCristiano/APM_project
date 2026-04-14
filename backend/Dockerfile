@@ -6,18 +6,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc g++ curl && \
     rm -rf /var/lib/apt/lists/*
 
-# Contexto é a raiz do projeto → copiar do path correto
 COPY backend/requirements.txt ./requirements.txt
 
 RUN pip install --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copia apenas o backend (imports relativos: backend.*)
 COPY backend/ ./backend/
 COPY images/ ./images/
 
+# Cria diretórios de persistência (history e models)
+RUN mkdir -p /app/backend/history /app/backend/models
+
 ENV PYTHONPATH=/app
+ENV PORT=8002
 
 EXPOSE 8002
 
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8002", "--reload"]
+# Usa $PORT para compatibilidade com Railway (que injeta PORT dinamicamente)
+CMD uvicorn backend.main:app --host 0.0.0.0 --port ${PORT}
