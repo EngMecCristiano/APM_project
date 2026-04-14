@@ -77,7 +77,7 @@ def plot_reliability_function(
     y_range = [0, 1.05] if func in ("SF", "CDF") else None
     fig.update_layout(
         title=f"[{func}] Análise Estocástica — {asset_tag}  ({_y_label} × Tempo h)",
-        height=500,
+        height=380,
         yaxis=dict(range=y_range),
     )
     return apply_theme(fig)
@@ -136,7 +136,7 @@ def plot_rul(
 
     fig.update_layout(
         title=f"Confiabilidade Condicional R(t|T) — {asset_tag}  (R(t|T) × Tempo futuro h)",
-        height=480,
+        height=400,
         yaxis=dict(range=[0, 1.05]),
     )
     return apply_theme(fig)
@@ -159,7 +159,7 @@ def plot_crow_amsaa(
     fig.update_yaxes(type="log")
     fig.update_layout(
         title=f"Crow-AMSAA NHPP — {asset_tag}  (Nº falhas acum. × Tempo acum. h — escala log)",
-        height=450,
+        height=380,
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
     )
     return apply_theme(fig)
@@ -252,7 +252,7 @@ def plot_anomalies(
 
     fig.update_layout(
         title="Detecção de Anomalias — Isolation Forest  (TBF h e Score × Ciclo)",
-        height=520,
+        height=380,
     )
     return apply_theme(fig)
 
@@ -315,7 +315,7 @@ def plot_pmo_curve(pmo: Dict[str, Any]) -> go.Figure:
                   annotation_position="bottom right")
     fig.update_layout(
         title="Otimização PMO — Teoria da Renovação  (Custo/hora × Intervalo tp h)",
-        height=420,
+        height=380,
     )
     return apply_theme(fig)
 
@@ -337,7 +337,7 @@ def plot_qq(
                              line=dict(color=COLORS["danger"], dash="dash")))
     fig.update_layout(
         title=f"QQ Plot — Quantis {model_name} vs. Observados  (Observados × Teóricos {model_name})",
-        height=420,
+        height=380,
     )
     return apply_theme(fig)
 

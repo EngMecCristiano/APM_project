@@ -54,7 +54,7 @@ def render(records: List[Dict], fit: Dict[str, Any], meta: Dict[str, Any]) -> No
         show_ci=show_ci,
         emp_x=emp_x, emp_y=emp_y,
     )
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, use_container_width=True)
 
     if emp_x is not None:
         st.caption("Linha tracejada = estimativa empírica Kaplan-Meier (não paramétrica). "

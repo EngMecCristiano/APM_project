@@ -60,7 +60,7 @@ def render(
         rul_p90=rul_p90,
         rul_threshold=rul_threshold,
     )
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, use_container_width=True)
 
     with st.expander("ℹ️ Interpretação do RUL e do IC Bootstrap"):
         st.markdown(f"""

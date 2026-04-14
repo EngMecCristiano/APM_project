@@ -92,7 +92,7 @@ def _render_prediction(trend, forecast, feat_imp, tbf_series, metrics, meta):
             trend_type=trend["trend_type"],
             r_squared=trend["r_squared"],
         )
-        st.plotly_chart(fig_trend, width="stretch")
+        st.plotly_chart(fig_trend, use_container_width=True)
 
         if trend["slope"] < 0:
             st.warning(
@@ -111,7 +111,7 @@ def _render_prediction(trend, forecast, feat_imp, tbf_series, metrics, meta):
         if feat_imp and len(feat_imp["features"]) > 0:
             st.plotly_chart(
                 plot_feature_importance(feat_imp["features"], feat_imp["importances"]),
-                width="stretch",
+                use_container_width=True,
             )
         else:
             st.info("Importância de features indisponível.")
@@ -121,7 +121,7 @@ def _render_prediction(trend, forecast, feat_imp, tbf_series, metrics, meta):
     if forecast["future_tbfs"]:
         st.plotly_chart(
             plot_forecast(tbf_series, forecast["future_tbfs"], meta["horimetro_atual"]),
-            width="stretch",
+            use_container_width=True,
         )
         df_fc = pd.DataFrame({
             "Ciclo": [f"t+{i+1}" for i in range(len(forecast["future_tbfs"]))],
@@ -143,7 +143,7 @@ def _render_prediction(trend, forecast, feat_imp, tbf_series, metrics, meta):
 def _render_anomalies(anomalies, tbf_series):
     st.plotly_chart(
         plot_anomalies(tbf_series, anomalies["anomaly_mask"], anomalies["scores"]),
-        width="stretch",
+        use_container_width=True,
     )
     if anomalies["count"] > 0:
         st.info(
@@ -179,7 +179,7 @@ def _render_risk(risk, rul, forecast, meta, best):
     with col_g:
         st.plotly_chart(
             plot_risk_gauge(risk["score"], risk["color"], risk["classification"]),
-            width="stretch",
+            use_container_width=True,
         )
         st.markdown(f"""
 <div style="background:{risk['color']}22; border-left:4px solid {risk['color']};
@@ -262,7 +262,7 @@ $$C(t_p) = \\frac{{C_p \\cdot R(t_p) + C_u \\cdot F(t_p)}}{{\\int_0^{{t_p}} R(x)
     m3.metric("Redução vs. Corretiva",   f"{nbr(pmo['reducao_custo_pct'], 1)}%")
     m4.metric("Relação Cu/Cp",           f"{nbr(cu / cp, 1)}×")
 
-    st.plotly_chart(plot_pmo_curve(pmo), width="stretch")
+    st.plotly_chart(plot_pmo_curve(pmo), use_container_width=True)
 
     horas_restantes = max(0, pmo["tp_otimo"] - meta["horimetro_atual"])
     st.markdown(f"""

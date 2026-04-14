@@ -26,12 +26,12 @@ def render(audit: Dict[str, Any], records: List[Dict], meta: Dict[str, Any]) -> 
 
     with tab_hist:
         tbf_all = [r["TBF"] for r in records]
-        st.plotly_chart(plot_tbf_histogram(tbf_all), width="stretch")
+        st.plotly_chart(plot_tbf_histogram(tbf_all), use_container_width=True)
 
     with tab_box:
         tbf_fail = [r["TBF"] for r in records if r["Falha"] == 1]
         tbf_cens = [r["TBF"] for r in records if r["Falha"] == 0]
-        st.plotly_chart(plot_boxplot(tbf_fail, tbf_cens), width="stretch")
+        st.plotly_chart(plot_boxplot(tbf_fail, tbf_cens), use_container_width=True)
 
     with tab_stats:
         df_tmp = pd.DataFrame(records)
@@ -102,7 +102,7 @@ def _render_residuals(audit):
     st.markdown(f"#### QQ Plot — {audit['ks_model']} vs. Dados Observados")
     st.plotly_chart(
         plot_qq(audit["qq_theoretical"], audit["qq_observed"], audit["ks_model"]),
-        width="stretch",
+        use_container_width=True,
     )
 
     st.markdown(f"#### Teste KS — Aderência ao Melhor Modelo ({audit['ks_model']})")

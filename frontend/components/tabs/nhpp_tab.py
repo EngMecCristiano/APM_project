@@ -33,7 +33,7 @@ def render(ca: Dict[str, Any], meta: Dict[str, Any]) -> None:
         n_teorico=ca["n_teorico"],
         asset_tag=meta["tag"],
     )
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, use_container_width=True)
 
     st.markdown(f"""
 <div class="beta-box" style="border-left-color:{color};">
