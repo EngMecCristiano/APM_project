@@ -10,7 +10,7 @@
 
 Sistema de análise de confiabilidade e manutenção preditiva para equipamentos industriais.
 
-Combina **Engenharia de Confiabilidade clássica** (Weibull, Crow-AMSAA, RUL, PMO) com **Machine Learning** (Random Forest, Isolation Forest) em uma arquitetura de microserviços containerizada.
+Combina **Engenharia de Confiabilidade clássica** (Weibull, Lognormal, Crow-AMSAA, RUL, PMO) com **Machine Learning** (Random Forest, Isolation Forest) em uma arquitetura de microserviços containerizada.
 
 ---
 
@@ -74,7 +74,7 @@ Combina **Engenharia de Confiabilidade clássica** (Weibull, Crow-AMSAA, RUL, PM
 
 ### Simulação de Dados
 - Simulador paramétrico Weibull e Lognormal com ruído gaussiano, mortalidade infantil e fadiga sistêmica
-- Equipamento personalizado com parâmetros β/η (Weibull) ou μ/σ (Lognormal)
+- Equipamentos pré-configurados ou personalizado com parâmetros β/η (Weibull) ou μ/σ (Lognormal)
 - Simulação enriquecida ISO 14224: modo de falha, causa raiz, TTR, custo, impacto de produção
 - Importação de CSV real com mapeamento de colunas
 
@@ -152,9 +152,8 @@ APM_project/
 │   ├── app.py
 │   ├── api_client.py
 │   └── requirements.txt
-├── images/              # Assets visuais
 ├── docker-compose.yml
-├── railway.toml         # Configuração de deploy Railway
+├── railway.toml
 ├── Makefile
 ├── .env.example
 └── README.md
@@ -164,15 +163,10 @@ APM_project/
 
 ## Variáveis de Ambiente
 
-Copie `.env.example` para `.env` e ajuste conforme necessário:
-
-```env
-APP_ENV=development
-BACKEND_URL=http://apm_backend:8002
-TZ=America/Sao_Paulo
-```
+Copie `.env.example` para `.env` e ajuste conforme necessário.
 
 ### Deploy Railway
+
 Configure as variáveis em cada serviço no painel Railway:
 
 | Variável | Backend | Frontend |
