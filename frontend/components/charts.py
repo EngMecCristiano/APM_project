@@ -74,9 +74,11 @@ def plot_reliability_function(
         "CHF": "H(t) — Hazard Acumulado (adimensional, 0–∞)",
     }.get(func, "Y")
 
+    y_range = [0, 1.05] if func in ("SF", "CDF") else None
     fig.update_layout(
         title=f"[{func}] Análise Estocástica — {asset_tag}  ({_y_label} × Tempo h)",
         height=500,
+        yaxis=dict(range=y_range),
     )
     return apply_theme(fig)
 
