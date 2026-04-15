@@ -248,19 +248,7 @@ def _render_simulator(
     custom_sigma: Optional[float] = None,
     custom_dist:  Optional[str]   = None,
 ) -> Tuple[Optional[Dict], Optional[List[Dict]], bool, None]:
-    if "n_sim" not in st.session_state:
-        st.session_state["n_sim"] = 500
-    col1, col2 = st.columns(2)
-    with col1:
-        n_slider = st.slider("Amostras", 100, 2000, st.session_state["n_sim"], 50, key="n_slider")
-    with col2:
-        n_input  = st.number_input("Valor exato", 100, 2000, st.session_state["n_sim"], 50, key="n_exact")
-    # Sincroniza: quem mudou por último prevalece
-    if n_input != st.session_state["n_sim"]:
-        st.session_state["n_sim"] = int(n_input)
-    elif n_slider != st.session_state["n_sim"]:
-        st.session_state["n_sim"] = int(n_slider)
-    n = st.session_state["n_sim"]
+    n = st.slider("Número de Amostras", 100, 2000, 500, 50)
 
     noise   = st.slider("Ruído Gaussiano (%)",     0.0, 50.0,  0.0, 1.0)
     outlier = st.slider("Mortalidade Infantil (%)", 0.0, 20.0,  0.0, 1.0)
@@ -296,18 +284,7 @@ def _render_rich_simulator(
 
     st.caption("Gera dataset completo: modo de falha, causa raiz, TTR, datas, custo e produção perdida.")
 
-    if "n_rich" not in st.session_state:
-        st.session_state["n_rich"] = 500
-    col1, col2 = st.columns(2)
-    with col1:
-        n_slider = st.slider("Amostras", 100, 2000, st.session_state["n_rich"], 50, key="rich_n")
-    with col2:
-        n_input  = st.number_input("Valor exato", 100, 2000, st.session_state["n_rich"], 50, key="rich_n_exact")
-    if n_input != st.session_state["n_rich"]:
-        st.session_state["n_rich"] = int(n_input)
-    elif n_slider != st.session_state["n_rich"]:
-        st.session_state["n_rich"] = int(n_slider)
-    n = st.session_state["n_rich"]
+    n = st.slider("Número de Amostras", 100, 2000, 500, 50, key="rich_n")
 
     noise   = st.slider("Ruído Gaussiano (%)",     0.0, 50.0,  0.0, 1.0, key="rich_noise")
     outlier = st.slider("Mortalidade Infantil (%)", 0.0, 20.0,  0.0, 1.0, key="rich_out")
@@ -361,32 +338,80 @@ def _render_rich_simulator(
 def _render_upload(
     meta: Dict[str, Any]
 ) -> Tuple[Optional[Dict], Optional[List[Dict]], bool, None]:
-    file = st.file_uploader("Upload CSV", type=["csv"])
+
+    with st.expander("📋 Formato esperado do CSV", expanded=False):
+        st.markdown("""
+**O arquivo CSV deve conter pelo menos 2 colunas:**
+
+| Coluna | Descrição | Exemplo |
+|---|---|---|
+| **Tempo (TBF)** | Tempo Entre Falhas em horas | `850.5` |
+| **Status** | `1` = falha confirmada, `0` = censura (ainda operando) | `1` |
+
+**Requisitos:**
+- Mínimo de **100 registros**
+- Separador: vírgula `,` ou ponto e vírgula `;`
+- Sem linhas vazias no meio
+- Valores numéricos (sem texto nas colunas de tempo/status)
+
+**Exemplo de arquivo válido:**
+```
+TBF_horas,status
+1200,1
+850,1
+1100,0
+950,1
+```
+        """)
+
+    file = st.file_uploader("Selecionar arquivo CSV", type=["csv"])
     if file is None:
         return meta, None, False, None
 
     file_bytes = file.read()
 
-    with st.spinner("Lendo colunas..."):
-        info = api.get_csv_columns(file_bytes, file.name)
-
-    cols    = info.get("columns", [])
-    n_rows  = info.get("n_rows", 0)
-    st.caption(f"Arquivo: {n_rows} linhas × {len(cols)} colunas")
-
-    if n_rows < 100:
-        st.error(f"❌ Mínimo 100 registros. Arquivo tem {n_rows}.")
+    try:
+        with st.spinner("Lendo colunas..."):
+            info = api.get_csv_columns(file_bytes, file.name)
+    except Exception as e:
+        st.error(f"❌ Erro ao ler o arquivo: {str(e)}\n\nVerifique se o arquivo é um CSV válido.")
         return meta, None, False, None
 
-    t_col = st.selectbox("Coluna de Tempo (TBF)", cols)
-    s_col = st.selectbox("Coluna de Status (Falha=1)", cols)
+    cols   = info.get("columns", [])
+    n_rows = info.get("n_rows", 0)
+    st.caption(f"Arquivo: {n_rows} linhas × {len(cols)} colunas detectadas")
+
+    if n_rows < 100:
+        st.error(f"❌ Arquivo com apenas {n_rows} registros. Mínimo necessário: 100 registros para análise confiável.")
+        return meta, None, False, None
+
+    if len(cols) < 2:
+        st.error("❌ O arquivo precisa ter pelo menos 2 colunas: Tempo (TBF) e Status.")
+        return meta, None, False, None
+
+    st.info(f"✅ Arquivo válido. Mapeie as colunas abaixo:")
+    t_col = st.selectbox("Coluna de Tempo (TBF — horas)", cols,
+                         help="Selecione a coluna que contém o tempo entre falhas em horas")
+    s_col = st.selectbox("Coluna de Status (Falha=1 / Censura=0)", cols,
+                         help="Selecione a coluna com 1 para falha confirmada e 0 para equipamento ainda operando")
+
+    if t_col == s_col:
+        st.warning("⚠️ As colunas de Tempo e Status não podem ser a mesma.")
+        return meta, None, False, None
 
     _render_thresholds()
 
     if st.button("▶ Processar Dados Reais", type="primary", use_container_width=True):
-        with st.spinner("Processando CSV..."):
-            records = api.upload_csv(file_bytes, file.name, t_col, s_col)
-        st.success(f"✅ {len(records)} registros processados.")
-        return meta, records, True, None
+        try:
+            with st.spinner("Processando CSV..."):
+                records = api.upload_csv(file_bytes, file.name, t_col, s_col)
+            if not records:
+                st.error("❌ Nenhum registro válido encontrado. Verifique se as colunas mapeadas contêm valores numéricos.")
+                return meta, None, False, None
+            st.success(f"✅ {len(records)} registros processados com sucesso.")
+            return meta, records, True, None
+        except Exception as e:
+            st.error(f"❌ Erro ao processar: {str(e)}\n\nVerifique se os valores nas colunas selecionadas são numéricos.")
+            return meta, None, False, None
 
     return meta, None, False, None

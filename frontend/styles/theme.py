@@ -281,11 +281,20 @@ div[data-testid="stThumbValue"] {{ color: #63DCF7 !important; font-size: 11px !i
     margin-top: 8px !important;
 }}
 
-/* ── Mobile — sidebar mais larga e gráficos sem zoom por toque ──────────── */
+/* ── Mobile — sidebar 100% e gráficos sem zoom por toque ───────────────── */
 @media (max-width: 768px) {{
     section[data-testid="stSidebar"] {{
-        width: 88vw !important;
-        min-width: 300px !important;
+        width: 100vw !important;
+        min-width: 100vw !important;
+    }}
+    /* Botão de fechar sidebar — destaque maior no mobile */
+    button[data-testid="baseButton-header"] {{
+        background: rgba(0,212,255,0.15) !important;
+        border: 1px solid rgba(0,212,255,0.4) !important;
+        border-radius: 8px !important;
+        color: #63DCF7 !important;
+        font-size: 16px !important;
+        padding: 8px 14px !important;
     }}
     /* Desativa zoom por pinça nos gráficos Plotly no mobile */
     .js-plotly-plot .plotly .main-svg {{
@@ -293,8 +302,8 @@ div[data-testid="stThumbValue"] {{ color: #63DCF7 !important; font-size: 11px !i
     }}
     /* Aumenta área de toque nos sliders */
     div[data-baseweb="slider"] div[role="slider"] {{
-        width: 20px !important;
-        height: 20px !important;
+        width: 22px !important;
+        height: 22px !important;
     }}
 }}
 
@@ -456,8 +465,13 @@ PLOTLY_THEME_KWARGS = dict(
     legend=dict(
         font=dict(color="#C6E0F5", size=11),
         bgcolor="rgba(0,0,0,0.40)",
+        orientation="h",
+        yanchor="bottom",
+        y=-0.25,
+        xanchor="center",
+        x=0.5,
     ),
-    margin=dict(t=40, b=36, l=50, r=20),
+    margin=dict(t=40, b=80, l=50, r=20),
 )
 
 
