@@ -10,6 +10,7 @@ from typing import Dict, Any, List
 
 from frontend.components.charts import plot_reliability_function
 from frontend.components.ui_helpers import nbr, kpi_row, html_table
+from frontend.styles.theme import PLOTLY_CONFIG
 
 # Tooltips explicativos por KPI
 _TIPS = {
@@ -27,6 +28,31 @@ def render(records: List[Dict], fit: Dict[str, Any], meta: Dict[str, Any]) -> No
     best    = fit["best"]
     ranking = fit["ranking"]
     delta   = fit.get("delta_aicc", 0.0)
+
+    with st.expander("ℹ️ Como interpretar esta aba — LDA (Análise de Dados de Vida)", expanded=False):
+        st.markdown("""
+**O que é LDA?**
+Life Data Analysis ajusta uma distribuição estatística ao histórico de falhas do equipamento.
+O modelo resultante permite calcular probabilidades de falha, vida útil esperada e planejar manutenção.
+
+**Escolha a função que deseja visualizar:**
+
+| Função | O que mostra | Quando usar |
+|---|---|---|
+| **SF** — Sobrevivência R(t) | Probabilidade de ainda estar operando em `t` horas | Principal — use sempre |
+| **CDF** — Acumulada F(t) | Probabilidade de já ter falhado até `t` horas | Complementar ao SF |
+| **PDF** — Densidade f(t) | Concentração de falhas ao longo do tempo | Ver onde as falhas se concentram |
+| **HF** — Taxa de Falha h(t) | Risco instantâneo de falha a cada hora | Identificar regime (desgaste × aleatório) |
+| **CHF** — Hazard Acumulado H(t) | Dano acumulado ao longo da vida | Modelos de degradação |
+
+**IC 95%:** faixa de incerteza estatística em torno da curva. Quanto maior o histórico de falhas, mais estreita a faixa.
+
+**Ranking AICc:** o app testa 4 distribuições (Weibull, Lognormal, Normal, Exponencial) e seleciona a de menor AICc.
+- |ΔAICc| > 4 → o modelo vencedor é claramente superior
+- |ΔAICc| < 2 → modelos equivalentes — use o que faz mais sentido para o equipamento
+
+**Linha Kaplan-Meier (tracejada):** curva empírica não-paramétrica. Quanto mais próxima do modelo ajustado, melhor o ajuste.
+        """)
 
     col_f, col_ci = st.columns([3, 1])
     with col_f:
@@ -55,7 +81,7 @@ def render(records: List[Dict], fit: Dict[str, Any], meta: Dict[str, Any]) -> No
         emp_x=emp_x, emp_y=emp_y,
         n_fail=len(tbf_fail),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
     if emp_x is not None:
         st.caption("Linha tracejada = estimativa empírica Kaplan-Meier (não paramétrica). "

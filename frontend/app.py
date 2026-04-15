@@ -27,7 +27,7 @@ from frontend.components.dashboard import (
     display_header, display_health_battery, display_kpi_cards, display_asset_info,
 )
 from frontend.components.sidebar import render_sidebar
-from frontend.components.tabs import lda_tab, rul_tab, nhpp_tab, ml_tab, audit_tab
+from frontend.components.tabs import lda_tab, rul_tab, nhpp_tab, ml_tab, audit_tab, guide_tab
 from frontend.components.ui_helpers import kpi_row, html_table
 from frontend.api_client import BackendError
 
@@ -242,14 +242,10 @@ def main() -> None:
         st.markdown(
             '<div style="background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.45);'
             'border-radius:8px;padding:16px 20px;color:#FDE68A;font-size:14px;font-weight:500;">'
-            '👈 <strong>Como usar o APM Analytics:</strong><br><br>'
-            '1. <strong>Abra a barra lateral</strong> tocando no ícone ☰ no canto superior esquerdo.<br>'
-            '2. <strong>Selecione o equipamento</strong> — use um perfil pré-configurado ou crie um personalizado com seus parâmetros β/η (Weibull) ou μ/σ (Lognormal).<br>'
-            '3. <strong>Defina a TAG e o horímetro atual</strong> do equipamento (horas de operação acumuladas).<br>'
-            '4. <strong>Escolha a fonte de dados</strong>: simule dados sintéticos ou importe um CSV real com seus históricos de falha.<br>'
-            '5. <strong>Clique em Executar Simulação ou Processar Dados Reais</strong> e feche a barra lateral para ver os resultados.<br>'
-            '6. <strong>Explore as abas</strong>: LDA (curvas de confiabilidade), RUL (vida útil remanescente), Crow-AMSAA (degradação), Machine Learning e Auditoria.<br>'
-            '7. <strong>Baixe o relatório PDF</strong> pelo botão que aparece no final da tela de resultados.'
+            '👈 <strong>Como usar o APM Analytics:</strong> Abra a barra lateral (☰), '
+            'selecione o equipamento, defina a TAG e horímetro, escolha a fonte de dados '
+            'e clique em Executar. Explore o <strong>📖 Guia & Teoria</strong> abaixo '
+            'para entender cada aba e indicador.'
             '</div>',
             unsafe_allow_html=True,
         )
@@ -258,6 +254,8 @@ def main() -> None:
                 "⚠️ Backend não está acessível. "
                 f"Verifique se o serviço FastAPI está em `{os.getenv('BACKEND_URL', 'http://localhost:8002')}`"
             )
+        st.divider()
+        guide_tab.render()
         return
 
     records  = st.session_state.records
@@ -300,6 +298,7 @@ def main() -> None:
         "📈 Degradação — RGA/NHPP",
         "🧠 Machine Learning",
         "🧮 EDA + Auditoria",
+        "📖 Guia & Teoria",
     ]
     if rich_df is not None:
         tab_labels.append("🗃️ Dataset ISO 14224")
@@ -326,9 +325,11 @@ def main() -> None:
             audit_tab.render(audit, records, meta)
         else:
             st.info("Auditoria não disponível — verifique erros acima.")
+    with tabs[5]:
+        guide_tab.render()
 
     if rich_df is not None:
-        with tabs[5]:
+        with tabs[6]:
             _render_rich_tab(rich_df)
 
     # ── Exportação PDF ────────────────────────────────────────────────────────

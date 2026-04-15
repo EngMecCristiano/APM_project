@@ -301,7 +301,8 @@ def plot_risk_gauge(score: int, color: str, classification: str) -> go.Figure:
     ))
     fig.update_layout(height=300, margin=dict(t=60, b=20),
                       paper_bgcolor="rgba(0,0,0,0)",
-                      font=dict(color="#F0FFFF"))
+                      font=dict(color="#F0FFFF"),
+                      dragmode=False)
     return fig
 
 

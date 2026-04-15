@@ -8,10 +8,37 @@ from typing import Dict, Any
 
 from frontend.components.charts import plot_crow_amsaa
 from frontend.components.ui_helpers import nbr, kpi_row
+from frontend.styles.theme import PLOTLY_CONFIG
 
 
 def render(ca: Dict[str, Any], meta: Dict[str, Any]) -> None:
     beta = ca["beta"]
+
+    with st.expander("ℹ️ Como interpretar esta aba — Degradação RGA/NHPP (Crow-AMSAA)", expanded=False):
+        st.markdown("""
+**O que é Crow-AMSAA?**
+Modelo de processo não-homogêneo de Poisson (NHPP) que analisa se o equipamento está piorando,
+estável ou melhorando ao longo do tempo — independente da distribuição de cada falha individual.
+
+**Como ler o gráfico:**
+- Eixo X: tempo acumulado de operação (escala log)
+- Eixo Y: número acumulado de falhas (escala log)
+- **Pontos azuis:** falhas reais observadas
+- **Linha vermelha:** ajuste do modelo NHPP (Crow-AMSAA MLE)
+
+Uma linha reta no gráfico log-log indica processo estacionário (HPP).
+Curvatura para cima = degradação. Curvatura para baixo = melhoria.
+
+**Como ler o parâmetro β:**
+
+| β | Regime | O que fazer |
+|---|---|---|
+| **β > 1** | Taxa de falha crescente — equipamento degradando | Planejar substituição preventiva por idade |
+| **β ≈ 1** | Taxa de falha constante — processo aleatório (HPP) | Manutenção corretiva ou inspeção periódica |
+| **β < 1** | Taxa de falha decrescente — melhoria ou mortalidade infantil | Investigar causa-raiz das primeiras falhas |
+
+**λ (lambda):** intensidade base do processo. Quanto maior, mais frequentes as falhas por unidade de tempo.
+        """)
 
     if beta > 1.05:
         color, regime = "#E73617", "Degradação ↑"
@@ -33,7 +60,7 @@ def render(ca: Dict[str, Any], meta: Dict[str, Any]) -> None:
         n_teorico=ca["n_teorico"],
         asset_tag=meta["tag"],
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
     st.markdown(f"""
 <div class="beta-box" style="border-left-color:{color};">

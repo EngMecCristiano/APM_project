@@ -9,9 +9,46 @@ from typing import Dict, Any, List
 
 from frontend.components.charts import plot_tbf_histogram, plot_boxplot, plot_qq
 from frontend.components.ui_helpers import nbr, kpi_row, html_table
+from frontend.styles.theme import PLOTLY_CONFIG
 
 
 def render(audit: Dict[str, Any], records: List[Dict], meta: Dict[str, Any]) -> None:
+
+    with st.expander("ℹ️ Como interpretar esta aba — EDA + Auditoria Estatística", expanded=False):
+        st.markdown("""
+**O que esta aba faz?**
+Valida a qualidade dos dados e avalia o quanto o modelo ajustado representa bem o comportamento real do equipamento.
+
+---
+
+**Análise Exploratória (EDA)**
+
+| Gráfico | O que analisar |
+|---|---|
+| **Distribuição (histograma)** | Formato da curva: simétrico, assimétrico à direita (típico de Weibull), bimodal (duas populações de falha) |
+| **Boxplot** | Comparar mediana e dispersão entre falhas e censuras. Outliers como pontos isolados |
+| **Estatísticas** | Média, mediana, desvio padrão, mínimo e máximo dos TBFs |
+
+---
+
+**Auditoria de Confiabilidade**
+
+| Métrica | Como interpretar |
+|---|---|
+| **B10 / B50 / B90** | Tempo em que 10% / 50% / 90% dos equipamentos terão falhado. B50 = mediana de vida |
+| **Disponibilidade** | Percentual do tempo esperado que o equipamento opera sem falhar (baseado no MTTF) |
+| **QQ Plot** | Pontos próximos à diagonal = bom ajuste do modelo aos dados reais |
+| **KS p-value** | p > 0.05 = modelo não rejeitado estatisticamente; p < 0.05 = ajuste suspeito |
+
+---
+
+**Diagnóstico Avançado**
+
+| Indicador | Como interpretar |
+|---|---|
+| **Outliers IQR** | TBFs muito curtos = mortalidade infantil; muito longos = possível censura não registrada |
+| **ρ Spearman** | Correlação entre ordem cronológica e TBF. Negativo + significativo = degradação ao longo do tempo |
+        """)
 
     # ── EDA — KPIs ───────────────────────────────────────────────────────────
     st.markdown("### Análise Exploratória de Dados")
@@ -26,12 +63,12 @@ def render(audit: Dict[str, Any], records: List[Dict], meta: Dict[str, Any]) -> 
 
     with tab_hist:
         tbf_all = [r["TBF"] for r in records]
-        st.plotly_chart(plot_tbf_histogram(tbf_all), use_container_width=True)
+        st.plotly_chart(plot_tbf_histogram(tbf_all), use_container_width=True, config=PLOTLY_CONFIG)
 
     with tab_box:
         tbf_fail = [r["TBF"] for r in records if r["Falha"] == 1]
         tbf_cens = [r["TBF"] for r in records if r["Falha"] == 0]
-        st.plotly_chart(plot_boxplot(tbf_fail, tbf_cens), use_container_width=True)
+        st.plotly_chart(plot_boxplot(tbf_fail, tbf_cens), use_container_width=True, config=PLOTLY_CONFIG)
 
     with tab_stats:
         df_tmp = pd.DataFrame(records)
@@ -103,6 +140,7 @@ def _render_residuals(audit):
     st.plotly_chart(
         plot_qq(audit["qq_theoretical"], audit["qq_observed"], audit["ks_model"]),
         use_container_width=True,
+        config=PLOTLY_CONFIG,
     )
 
     st.markdown(f"#### Teste KS — Aderência ao Melhor Modelo ({audit['ks_model']})")

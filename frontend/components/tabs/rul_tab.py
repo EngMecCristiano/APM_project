@@ -8,6 +8,7 @@ from typing import Dict, Any
 
 from frontend.components.charts import plot_rul
 from frontend.components.ui_helpers import nbr, kpi_row
+from frontend.styles.theme import PLOTLY_CONFIG
 
 _TIPS = {
     "r_current": "R(t₀) = probabilidade de o ativo ainda estar operando no horímetro atual. "
@@ -31,6 +32,31 @@ def render(
     horimetro = meta["horimetro_atual"]
     rul_p10   = rul.get("rul_p10", rul["rul_time"] * 0.7)
     rul_p90   = rul.get("rul_p90", rul["rul_time"] * 1.3)
+
+    with st.expander("ℹ️ Como interpretar esta aba — RUL (Vida Útil Remanescente)", expanded=False):
+        st.markdown(f"""
+**O que é RUL?**
+Remaining Useful Life — estimativa de quantas horas o equipamento ainda pode operar antes de atingir
+um nível crítico de confiabilidade (o limiar configurado na barra lateral).
+
+**Como ler os indicadores:**
+
+| Indicador | Significado |
+|---|---|
+| **R(t₀)** | Saúde atual: probabilidade de o equipamento estar funcionando agora. 90% = ainda saudável; abaixo de 50% = atenção |
+| **RUL** | Horas adicionais até a confiabilidade cair para o limiar definido (padrão 10%) |
+| **Horizonte de Falha** | Horímetro atual + RUL — quando planejar a próxima intervenção |
+| **IC 80%** | Intervalo de incerteza do RUL. Faixa vermelha no gráfico |
+
+**Como ler o gráfico:**
+- O eixo X mostra horas **futuras** a partir de hoje (horímetro = {horimetro:.0f} h)
+- A curva desce da direita para a esquerda — quanto mais rápida a queda, maior o risco
+- A linha vermelha pontilhada é o limiar: quando a curva tocar esta linha, o RUL se esgota
+- A faixa vermelha vertical é o IC 80% do Bootstrap — representa a incerteza do modelo
+
+**Limiar configurável:** ajuste na barra lateral em "Limiares de Análise". Limiar 10% significa que o
+equipamento tem 90% de chance de falhar antes de completar o RUL estimado.
+        """)
 
     kpi_row([
         ("R(t₀) — Confiabilidade Atual",
@@ -60,7 +86,7 @@ def render(
         rul_p90=rul_p90,
         rul_threshold=rul_threshold,
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
     with st.expander("ℹ️ Interpretação do RUL e do IC Bootstrap"):
         st.markdown(f"""

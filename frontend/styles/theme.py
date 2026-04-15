@@ -445,6 +445,14 @@ div[data-testid="stThumbValue"] {{ color: #63DCF7 !important; font-size: 11px !i
 
 # ─── Tema Plotly ──────────────────────────────────────────────────────────────
 
+# Config padrão para st.plotly_chart — desativa zoom/drag por scroll e toque no mobile
+PLOTLY_CONFIG = {
+    "scrollZoom":   False,
+    "displayModeBar": False,
+    "doubleClick":  False,
+    "staticPlot":   False,   # False mantém hover; True congela tudo
+}
+
 PLOTLY_THEME_KWARGS = dict(
     plot_bgcolor="rgba(0,0,0,0)",
     paper_bgcolor="rgba(0,0,0,0)",
@@ -472,6 +480,7 @@ PLOTLY_THEME_KWARGS = dict(
         x=0.5,
     ),
     margin=dict(t=40, b=80, l=50, r=20),
+    dragmode=False,   # bloqueia zoom/pan por toque no mobile
 )
 
 

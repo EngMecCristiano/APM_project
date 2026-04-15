@@ -413,7 +413,7 @@ class ReliabilityEngine:
         # Outliers IQR
         q1, q3   = np.percentile(tbf_fail, 25), np.percentile(tbf_fail, 75)
         iqr      = q3 - q1
-        lo, hi   = q1 - 1.5 * iqr, q3 + 1.5 * iqr
+        lo, hi   = max(0.0, q1 - 1.5 * iqr), q3 + 1.5 * iqr
         outliers = tbf_fail[(tbf_fail < lo) | (tbf_fail > hi)]
 
         # KPIs do dashboard (calculados — não hardcoded)

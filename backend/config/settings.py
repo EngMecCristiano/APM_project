@@ -46,7 +46,7 @@ EQUIPMENT_TYPES: list[str] = list(EQUIPMENT_PROFILES.keys())
 
 # ─── Simulação ────────────────────────────────────────────────────────────────
 SIM_MIN_SAMPLES = 100
-SIM_MAX_SAMPLES = 1500
+SIM_MAX_SAMPLES = 2000
 
 # ─── ML ───────────────────────────────────────────────────────────────────────
 RF_N_ESTIMATORS       = 150
