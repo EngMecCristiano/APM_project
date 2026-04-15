@@ -241,8 +241,14 @@ def main() -> None:
         display_header(meta or {})
         st.markdown(
             '<div style="background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.45);'
-            'border-radius:8px;padding:10px 14px;color:#FDE68A;font-size:14px;font-weight:500;">'
-            '👈 Configure os parâmetros na barra lateral e clique em <strong>Executar</strong> para iniciar.'
+            'border-radius:8px;padding:16px 20px;color:#FDE68A;font-size:14px;font-weight:500;">'
+            '👈 <strong>Como usar o APM Analytics:</strong><br><br>'
+            '1. <strong>Selecione o equipamento</strong> na barra lateral — use um perfil pré-configurado ou crie um personalizado com seus parâmetros β/η (Weibull) ou μ/σ (Lognormal).<br>'
+            '2. <strong>Defina a TAG e o horímetro atual</strong> do equipamento (horas de operação acumuladas).<br>'
+            '3. <strong>Escolha a fonte de dados</strong>: simule dados sintéticos ou importe um CSV real com seus históricos de falha.<br>'
+            '4. <strong>Clique em Executar Simulação ou Analisar CSV</strong> para processar.<br>'
+            '5. <strong>Explore as abas</strong>: LDA (curvas de confiabilidade), RUL (vida útil remanescente), Crow-AMSAA (degradação), Machine Learning e Auditoria.<br>'
+            '6. <strong>Baixe o relatório PDF</strong> com todos os resultados pelo botão na barra lateral.'
             '</div>',
             unsafe_allow_html=True,
         )

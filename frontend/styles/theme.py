@@ -281,6 +281,23 @@ div[data-testid="stThumbValue"] {{ color: #63DCF7 !important; font-size: 11px !i
     margin-top: 8px !important;
 }}
 
+/* ── Mobile — sidebar mais larga e gráficos sem zoom por toque ──────────── */
+@media (max-width: 768px) {{
+    section[data-testid="stSidebar"] {{
+        width: 88vw !important;
+        min-width: 300px !important;
+    }}
+    /* Desativa zoom por pinça nos gráficos Plotly no mobile */
+    .js-plotly-plot .plotly .main-svg {{
+        touch-action: pan-y !important;
+    }}
+    /* Aumenta área de toque nos sliders */
+    div[data-baseweb="slider"] div[role="slider"] {{
+        width: 20px !important;
+        height: 20px !important;
+    }}
+}}
+
 
 /* ── Download Button ────────────────────────────────────────────────────── */
 .stDownloadButton button {{

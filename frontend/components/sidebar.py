@@ -248,11 +248,19 @@ def _render_simulator(
     custom_sigma: Optional[float] = None,
     custom_dist:  Optional[str]   = None,
 ) -> Tuple[Optional[Dict], Optional[List[Dict]], bool, None]:
+    if "n_sim" not in st.session_state:
+        st.session_state["n_sim"] = 500
     col1, col2 = st.columns(2)
     with col1:
-        n = st.slider("Amostras", 100, 1500, 500, 50)
+        n_slider = st.slider("Amostras", 100, 2000, st.session_state["n_sim"], 50, key="n_slider")
     with col2:
-        n = st.number_input("Valor exato", 100, 1500, n, 50, key="n_exact")
+        n_input  = st.number_input("Valor exato", 100, 2000, st.session_state["n_sim"], 50, key="n_exact")
+    # Sincroniza: quem mudou por último prevalece
+    if n_input != st.session_state["n_sim"]:
+        st.session_state["n_sim"] = int(n_input)
+    elif n_slider != st.session_state["n_sim"]:
+        st.session_state["n_sim"] = int(n_slider)
+    n = st.session_state["n_sim"]
 
     noise   = st.slider("Ruído Gaussiano (%)",     0.0, 50.0,  0.0, 1.0)
     outlier = st.slider("Mortalidade Infantil (%)", 0.0, 20.0,  0.0, 1.0)
@@ -288,11 +296,18 @@ def _render_rich_simulator(
 
     st.caption("Gera dataset completo: modo de falha, causa raiz, TTR, datas, custo e produção perdida.")
 
+    if "n_rich" not in st.session_state:
+        st.session_state["n_rich"] = 500
     col1, col2 = st.columns(2)
     with col1:
-        n = st.slider("Amostras", 100, 1500, 500, 50, key="rich_n")
+        n_slider = st.slider("Amostras", 100, 2000, st.session_state["n_rich"], 50, key="rich_n")
     with col2:
-        n = st.number_input("Valor exato", 100, 1500, n, 50, key="rich_n_exact")
+        n_input  = st.number_input("Valor exato", 100, 2000, st.session_state["n_rich"], 50, key="rich_n_exact")
+    if n_input != st.session_state["n_rich"]:
+        st.session_state["n_rich"] = int(n_input)
+    elif n_slider != st.session_state["n_rich"]:
+        st.session_state["n_rich"] = int(n_slider)
+    n = st.session_state["n_rich"]
 
     noise   = st.slider("Ruído Gaussiano (%)",     0.0, 50.0,  0.0, 1.0, key="rich_noise")
     outlier = st.slider("Mortalidade Infantil (%)", 0.0, 20.0,  0.0, 1.0, key="rich_out")
