@@ -167,12 +167,11 @@ def plot_crow_amsaa(
     fig.add_trace(go.Scatter(x=t_acumulado, y=n_teorico,
                              mode="lines", name="Ajuste NHPP (Crow-AMSAA MLE)",
                              line=dict(color=COLORS["danger"], width=2)))
-    fig.update_xaxes(type="log")
-    fig.update_yaxes(type="log")
+    fig.update_xaxes(type="log", automargin=True)
+    fig.update_yaxes(type="log", automargin=True)
     fig.update_layout(
         title=f"Crow-AMSAA NHPP — {asset_tag}  (Nº falhas acum. × Tempo acum. h — escala log)",
         height=380,
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
     )
     return apply_theme(fig)
 
