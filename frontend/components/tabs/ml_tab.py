@@ -526,7 +526,7 @@ e sintetiza tudo em um **plano de ação priorizado com justificativas técnicas
 
     # Badge de modo
     if ia_ativa:
-        st.success("Prescrição gerada pelo **Agente Claude** (claude-opus-4-7 + tool_use)", icon="🤖")
+        st.success("Prescrição gerada pelo **Agente Claude** (claude-sonnet-4-6 + tool_use)", icon="🤖")
     else:
         st.info("Prescrição gerada pelo **Expert System** (ANTHROPIC_API_KEY não configurada)", icon="⚙️")
 
@@ -546,10 +546,12 @@ e sintetiza tudo em um **plano de ação priorizado com justificativas técnicas
         unsafe_allow_html=True,
     )
 
-    # Diagnóstico técnico
-    diagnostico = result.get("diagnostico") or result.get("texto_completo", "")
+    # Diagnóstico técnico — remove bloco JSON que o agente inclui na resposta
+    import re as _re
+    diagnostico_raw = result.get("diagnostico") or result.get("texto_completo", "")
+    diagnostico = _re.sub(r"```json[\s\S]*?```", "", diagnostico_raw).strip()
     if diagnostico:
-        with st.expander("📋 Diagnóstico Técnico Completo", expanded=False):
+        with st.expander("📋 Diagnóstico Técnico Completo", expanded=True):
             st.markdown(diagnostico)
 
     # Raciocínio do agente
