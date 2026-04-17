@@ -546,10 +546,8 @@ e sintetiza tudo em um **plano de ação priorizado com justificativas técnicas
         unsafe_allow_html=True,
     )
 
-    # Diagnóstico técnico — remove bloco JSON que o agente inclui na resposta
-    import re as _re
-    diagnostico_raw = result.get("diagnostico") or result.get("texto_completo", "")
-    diagnostico = _re.sub(r"```json[\s\S]*?```", "", diagnostico_raw).strip()
+    # Diagnóstico técnico — campo já vem limpo (sem JSON) do backend
+    diagnostico = result.get("diagnostico", "")
     if diagnostico:
         with st.expander("📋 Diagnóstico Técnico Completo", expanded=True):
             st.markdown(diagnostico)

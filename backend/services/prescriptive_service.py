@@ -213,9 +213,14 @@ def _parse_response(text: str, steps: List[str]) -> Dict:
         except json.JSONDecodeError:
             pass
 
+    # Texto narrativo = tudo antes do bloco ```json (ou texto inteiro se não houver bloco)
+    diagnostico = re.sub(r"```json[\s\S]*?```", "", text).strip()
+    # Remove também qualquer bloco JSON solto (começa com { na raiz)
+    diagnostico = re.sub(r"\n\s*\{[\s\S]*", "", diagnostico).strip()
+
     if not structured:
         structured = {
-            "sumario_executivo": (text[:400] + "…") if len(text) > 400 else text,
+            "sumario_executivo": (diagnostico[:400] + "…") if len(diagnostico) > 400 else diagnostico,
             "nivel_urgencia":    "Média",
             "proxima_intervencao_h": None,
             "janela_intervencao": "—",
@@ -223,7 +228,7 @@ def _parse_response(text: str, steps: List[str]) -> Dict:
         }
 
     structured["raciocinio_agente"] = steps
-    structured["texto_completo"]    = text
+    structured["diagnostico"]       = diagnostico  # só texto narrativo, sem JSON
     structured["ia_disponivel"]     = True
     return structured
 
