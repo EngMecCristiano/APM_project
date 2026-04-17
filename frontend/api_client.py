@@ -188,6 +188,41 @@ def audit(records: List[Dict], dist_params: Dict, horimetro_atual: float) -> Dic
 
 # ─── ML ───────────────────────────────────────────────────────────────────────
 
+def prescriptive_agent(
+    equipment_type: str,
+    risk_score: int,
+    risk_classification: str,
+    rul_hours: float,
+    horimetro_atual: float,
+    failure_count: int,
+    anomaly_count: int,
+    trend_type: str,
+    degradation_rate: float,
+    tag: str,
+    weibull_beta:  Optional[float] = None,
+    weibull_eta:   Optional[float] = None,
+    pmo_tp_otimo:  Optional[float] = None,
+    meta:          Optional[Dict]  = None,
+) -> Dict:
+    """Executa o agente de Manutenção Prescritiva (Claude + Expert System fallback)."""
+    return _post("/ml/prescriptive", {
+        "equipment_type":      equipment_type,
+        "risk_score":          risk_score,
+        "risk_classification": risk_classification,
+        "rul_hours":           rul_hours,
+        "horimetro_atual":     horimetro_atual,
+        "failure_count":       failure_count,
+        "anomaly_count":       anomaly_count,
+        "trend_type":          trend_type,
+        "degradation_rate":    degradation_rate,
+        "tag":                 tag,
+        "weibull_beta":        weibull_beta,
+        "weibull_eta":         weibull_eta,
+        "pmo_tp_otimo":        pmo_tp_otimo,
+        "meta":                meta or {},
+    })
+
+
 def ml_analyze(
     records: List[Dict],
     horimetro_atual: float,

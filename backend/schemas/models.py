@@ -330,6 +330,26 @@ class PMOResult(BaseModel):
     custo_curva:         List[float]
 
 
+# ─── Manutenção Prescritiva ───────────────────────────────────────────────────
+
+class PrescriptiveRequest(BaseModel):
+    """Dados do ativo para o agente de Manutenção Prescritiva."""
+    equipment_type:      str
+    risk_score:          int
+    risk_classification: str
+    rul_hours:           float
+    horimetro_atual:     float
+    failure_count:       int
+    anomaly_count:       int
+    trend_type:          str
+    degradation_rate:    float
+    tag:                 str
+    weibull_beta:        Optional[float] = None
+    weibull_eta:         Optional[float] = None
+    pmo_tp_otimo:        Optional[float] = None
+    meta:                Dict[str, Any]  = Field(default_factory=dict)
+
+
 # ─── Health ───────────────────────────────────────────────────────────────────
 
 class HealthResponse(BaseModel):

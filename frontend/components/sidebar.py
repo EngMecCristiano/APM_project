@@ -39,12 +39,6 @@ TIPOS_MANUTENCAO = ["Corretiva", "Corretiva Emergencial", "Preventiva", "Prediti
 CRITICIDADES     = ["Alta", "Média", "Baixa"]
 BOUNDARIES       = ["Interno", "Externo"]
 
-# Parâmetros Weibull padrão para equipamento personalizado
-CUSTOM_BETA_DEFAULT  = 1.5
-CUSTOM_ETA_DEFAULT   = 1000.0
-CUSTOM_MU_DEFAULT    = 6.5
-CUSTOM_SIGMA_DEFAULT = 0.8
-
 
 @st.cache_data(ttl=300)
 def _fetch_catalog() -> List[Dict]:
@@ -71,8 +65,6 @@ def _build_equipment_options(catalog: List[Dict]) -> Tuple[List[str], Dict[str, 
     for sector, names in by_sector.items():
         options.append(f"── {sector} ──")   # separador de grupo (não selecionável)
         options.extend(names)
-    options.append("── Personalizado ──")
-    options.append("Outro (personalizado)")
     return options, sector_map
 
 
@@ -91,17 +83,40 @@ def render_sidebar() -> Tuple[
         st.markdown(
             '<p style="font-size:17px;font-weight:700;color:#DEF7FF;margin:0 0 4px 0;'
             'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'
-            '⚙️ Configuração do Estudo</p>'
-            '<br>',
+            '⚙️ Configuração do Estudo</p>',
             unsafe_allow_html=True,
         )
+
+        # ── Fluxo de trabalho ─────────────────────────────────────────────────
+        with st.expander("📋 Fluxo de Trabalho", expanded=False):
+            st.markdown("""
+**Análise de Confiabilidade**
+1. Selecione o equipamento no catálogo ISO 14224
+2. Preencha TAG, horímetro e metadados
+3. Escolha o modo de entrada de dados
+4. Importe ou insira os dados de falha
+5. Clique em **Executar / Processar**
+6. Navegue pelas abas de análise
+
+**Manutenção Prescritiva com IA**
+Após executar a análise completa:
+
+7. Acesse a aba **Machine Learning**
+8. Clique na sub-aba **🤖 Manutenção Prescritiva**
+9. Clique em **Gerar Prescrição com IA**
+10. O agente analisa risco, RUL e catálogo ISO 14224 e entrega
+    um plano de ação priorizado com janelas de intervenção
+
+> Para resultados mais precisos na prescrição: use **Importar CSV Real**
+> com dados históricos reais e selecione o equipamento correto no catálogo.
+""")
+
         st.divider()
 
         # ── Seleção de equipamento (catálogo ISO 14224 dinâmico) ─────────────
         catalog = _fetch_catalog()
         options, sector_map = _build_equipment_options(catalog)
 
-        # Filtra separadores da lista de opções válidas
         def _is_separator(opt: str) -> bool:
             return opt.startswith("──")
 
@@ -111,83 +126,22 @@ def render_sidebar() -> Tuple[
             format_func=lambda x: x,
         )
 
-        # Se separador foi selecionado, força para o próximo item válido
+        # Se separador foi selecionado, força para o primeiro item válido
         if _is_separator(selected):
             valid = [o for o in options if not _is_separator(o)]
-            selected = valid[0] if valid else "Outro (personalizado)"
+            selected = valid[0] if valid else ""
             st.session_state["_sidebar_eq"] = selected
 
-        # ── Equipamento personalizado ─────────────────────────────────────────
-        custom_beta:  Optional[float] = None
-        custom_eta:   Optional[float] = None
-        custom_mu:    Optional[float] = None
-        custom_sigma: Optional[float] = None
-        custom_dist:  Optional[str]   = None
+        tipo_eq  = selected
+        setor_eq = sector_map.get(selected, "Geral")
 
-        if selected == "Outro (personalizado)":
-            tipo_eq = st.text_input(
-                "Nome do Equipamento",
-                value="",
-                placeholder="ex: Compressor de Ar, Turbina a Gás...",
+        eq_info = next((e for e in catalog if e["name"] == selected), None)
+        if eq_info:
+            st.caption(
+                f"**{eq_info.get('iso14224_class', '')}** · {setor_eq} · "
+                f"β={eq_info['beta']:.1f} · η={eq_info['eta']:.0f} h · "
+                f"{eq_info['n_scenarios']} cenários de falha"
             )
-            with st.expander("⚙️ Parâmetros do Simulador", expanded=True):
-                custom_dist = st.radio(
-                    "Distribuição base",
-                    ["Weibull", "Lognormal"],
-                    horizontal=True,
-                    help="Define a distribuição usada para gerar os TBFs sintéticos.",
-                )
-                if custom_dist == "Weibull":
-                    st.caption("Weibull — adequada para desgaste progressivo e mortalidade infantil.")
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        custom_beta = st.number_input(
-                            "β — forma", min_value=0.1, max_value=10.0,
-                            value=CUSTOM_BETA_DEFAULT, step=0.1,
-                            help="β < 1: mortalidade infantil  |  β = 1: aleatório  |  β > 1: desgaste",
-                        )
-                    with c2:
-                        custom_eta = st.number_input(
-                            "η — escala (h)", min_value=10.0, max_value=50000.0,
-                            value=CUSTOM_ETA_DEFAULT, step=100.0,
-                            help="63,2% dos equipamentos falharam até η horas.",
-                        )
-                else:
-                    st.caption("Lognormal — adequada para fadiga, corrosão e componentes eletrônicos.")
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        custom_mu = st.number_input(
-                            "μ — log-média", min_value=1.0, max_value=12.0,
-                            value=CUSTOM_MU_DEFAULT, step=0.1,
-                            help="Logaritmo natural da mediana de vida.",
-                        )
-                    with c2:
-                        custom_sigma = st.number_input(
-                            "σ — log-desvio", min_value=0.05, max_value=3.0,
-                            value=CUSTOM_SIGMA_DEFAULT, step=0.05,
-                        )
-                    import math
-                    mediana = math.exp(custom_mu)
-                    p10 = math.exp(custom_mu - 1.28 * custom_sigma)
-                    p90 = math.exp(custom_mu + 1.28 * custom_sigma)
-                    st.caption(
-                        f"Mediana ≈ **{mediana:.0f} h** | P10 ≈ {p10:.0f} h | P90 ≈ {p90:.0f} h"
-                    )
-
-            if not tipo_eq:
-                tipo_eq = "Equipamento Personalizado"
-            setor_eq = "Personalizado"
-        else:
-            tipo_eq  = selected
-            setor_eq = sector_map.get(selected, "Geral")
-            # Mostra parâmetros do equipamento selecionado
-            eq_info = next((e for e in catalog if e["name"] == selected), None)
-            if eq_info:
-                st.caption(
-                    f"**{eq_info.get('iso14224_class', '')}** · {setor_eq} · "
-                    f"β={eq_info['beta']:.1f} · η={eq_info['eta']:.0f} h · "
-                    f"{eq_info['n_scenarios']} cenários de falha"
-                )
 
         # ── Identificação do ativo ────────────────────────────────────────────
         tag_eq   = st.text_input("TAG Operacional", value="EQP-01A")
@@ -248,9 +202,9 @@ def render_sidebar() -> Tuple[
         st.divider()
 
         if mode == "Simulador Paramétrico":
-            return _render_simulator(meta, tipo_eq, custom_beta, custom_eta, custom_mu, custom_sigma, custom_dist)
+            return _render_simulator(meta, tipo_eq)
         elif mode == "Simulação Enriquecida (ISO 14224)":
-            return _render_rich_simulator(meta, tipo_eq, tag_eq, custom_beta, custom_eta, custom_mu, custom_sigma, custom_dist)
+            return _render_rich_simulator(meta, tipo_eq, tag_eq)
         elif mode == "Entrada Manual (ISO 14224)":
             return _render_manual_entry(meta, tipo_eq, tag_eq, catalog)
         else:
@@ -341,12 +295,8 @@ def _render_thresholds() -> None:
 # ─── Simulador básico ─────────────────────────────────────────────────────────
 
 def _render_simulator(
-    meta: Dict[str, Any], tipo_eq: str,
-    custom_beta:  Optional[float] = None,
-    custom_eta:   Optional[float] = None,
-    custom_mu:    Optional[float] = None,
-    custom_sigma: Optional[float] = None,
-    custom_dist:  Optional[str]   = None,
+    meta: Dict[str, Any],
+    tipo_eq: str,
 ) -> Tuple[Optional[Dict], Optional[List[Dict]], bool, None]:
     n       = st.slider("Número de Amostras", 100, 2000, 500, 50)
     noise   = st.slider("Ruído Gaussiano (%)",      0.0, 50.0, 0.0, 1.0)
@@ -358,12 +308,7 @@ def _render_simulator(
 
     if st.button("▶ Executar Simulação", type="primary", use_container_width=True):
         with st.spinner("Gerando dados simulados..."):
-            records = api.simulate(
-                int(n), tipo_eq, noise, outlier, aging,
-                custom_beta=custom_beta, custom_eta=custom_eta,
-                custom_mu=custom_mu, custom_sigma=custom_sigma,
-                custom_dist=custom_dist,
-            )
+            records = api.simulate(int(n), tipo_eq, noise, outlier, aging)
         st.success(f"✅ {len(records)} registros gerados.")
         return meta, records, True, None
 
@@ -373,12 +318,9 @@ def _render_simulator(
 # ─── Simulador enriquecido ────────────────────────────────────────────────────
 
 def _render_rich_simulator(
-    meta: Dict[str, Any], tipo_eq: str, tag_eq: str,
-    custom_beta:  Optional[float] = None,
-    custom_eta:   Optional[float] = None,
-    custom_mu:    Optional[float] = None,
-    custom_sigma: Optional[float] = None,
-    custom_dist:  Optional[str]   = None,
+    meta: Dict[str, Any],
+    tipo_eq: str,
+    tag_eq: str,
 ) -> Tuple[Optional[Dict], Optional[List[Dict]], bool, Optional[pd.DataFrame]]:
 
     st.caption("Gera dataset completo: modo de falha, causa raiz, TTR, datas, custo, boundary e produção perdida.")
@@ -406,11 +348,6 @@ def _render_rich_simulator(
                 tag_ativo=tag_eq,
                 start_date=start_date.strftime("%Y-%m-%d"),
                 preco_produto_brl_t=float(preco_t),
-                custom_beta=custom_beta,
-                custom_eta=custom_eta,
-                custom_mu=custom_mu,
-                custom_sigma=custom_sigma,
-                custom_dist=custom_dist,
             )
 
         rich_df = pd.DataFrame(raw)
@@ -440,12 +377,12 @@ def _taxonomy_field(
     help_text: str = "",
 ) -> str:
     """
-    Selectbox com valores do catálogo + opção 'Outro (personalizado)' que revela
+    Selectbox com valores do catálogo + opção 'Livre (personalizado)' que revela
     um text_input para o usuário digitar valor livre.
     """
-    OPTIONS = catalog_values + ["Outro (personalizado)"]
+    OPTIONS = catalog_values + ["Livre (personalizado)"]
     sel = st.selectbox(label, OPTIONS, key=f"{key}_sel", help=help_text)
-    if sel == "Outro (personalizado)":
+    if sel == "Livre (personalizado)":
         val = st.text_input(f"▸ {label} personalizado", key=f"{key}_txt",
                             placeholder="Digite o valor...")
         return val.strip() or "—"
@@ -465,21 +402,21 @@ def _render_manual_entry(
     st.caption("Registre eventos reais com taxonomia ISO 14224. Os dados são salvos no banco por TAG.")
 
     # Busca cenários do equipamento selecionado para popular dropdowns
-    eq_entry   = next((e for e in catalog if e["name"] == tipo_eq), None)
-    scenarios  = eq_entry.get("failure_scenarios", []) if eq_entry else []
+    eq_entry  = next((e for e in catalog if e["name"] == tipo_eq), None)
+    scenarios = eq_entry.get("failure_scenarios", []) if eq_entry else []
 
-    subcomps   = sorted({s["subcomponente"]      for s in scenarios}) or ["—"]
-    modos      = sorted({s["modo_falha"]          for s in scenarios}) or ["—"]
-    causas     = sorted({s["causa_raiz"]          for s in scenarios}) or ["—"]
-    mecanismos_cat = sorted({s["mecanismo"]       for s in scenarios}) or ["—"]
+    # Se equipamento não encontrado no catálogo, agrega todos os cenários como referência
+    if not scenarios:
+        all_scenarios = [s for eq in catalog for s in eq.get("failure_scenarios", [])]
+        scenarios = all_scenarios
 
-    # Listas ISO 14224 do catálogo (ou defaults)
+    subcomps       = sorted({s["subcomponente"] for s in scenarios}) or ["—"]
+    modos          = sorted({s["modo_falha"]    for s in scenarios}) or ["—"]
+    causas         = sorted({s["causa_raiz"]    for s in scenarios}) or ["—"]
+    mecanismos_cat = sorted({s["mecanismo"]     for s in scenarios}) or ["—"]
+
     mecanismos_all = MECANISMOS_DEGRADACAO or mecanismos_cat
-    tipos_manut    = TIPOS_MANUTENCAO
-    criticidades   = CRITICIDADES
-    boundaries     = BOUNDARIES
 
-    # Inicializa lista de eventos na sessão
     if "manual_events" not in st.session_state:
         st.session_state["manual_events"] = []
 
@@ -503,22 +440,22 @@ def _render_manual_entry(
 
         st.markdown("**Taxonomia ISO 14224**")
 
-        sub = _taxonomy_field("Subcomponente", subcomps, "me_sub",
-                              "Parte do equipamento onde ocorreu a falha.")
+        sub  = _taxonomy_field("Subcomponente", subcomps, "me_sub",
+                               "Parte do equipamento onde ocorreu a falha.")
         modo = _taxonomy_field("Modo de Falha", modos, "me_modo",
                                "Como a falha se manifestou (ex: Desgaste, Fratura).")
         causa = _taxonomy_field("Causa Raiz", causas, "me_causa",
                                 "Por que a falha ocorreu (ex: Lubrificação Deficiente).")
-        mec = _taxonomy_field("Mecanismo de Degradação", mecanismos_all, "me_mec",
-                              "Processo físico-químico da degradação (ex: Fadiga, Corrosão).")
+        mec  = _taxonomy_field("Mecanismo de Degradação", mecanismos_all, "me_mec",
+                               "Processo físico-químico da degradação (ex: Fadiga, Corrosão).")
 
         c3, c4, c5 = st.columns(3)
         with c3:
-            tipo_m = st.selectbox("Tipo de Manutenção", tipos_manut, key="me_tipo")
+            tipo_m = st.selectbox("Tipo de Manutenção", TIPOS_MANUTENCAO, key="me_tipo")
         with c4:
-            crit = st.selectbox("Criticidade", criticidades, key="me_crit")
+            crit = st.selectbox("Criticidade", CRITICIDADES, key="me_crit")
         with c5:
-            bound = st.selectbox("Boundary", boundaries, key="me_bound",
+            bound = st.selectbox("Boundary", BOUNDARIES, key="me_bound",
                                  help="Interno: causa dentro do equipamento. Externo: causa no processo/ambiente.")
 
         st.markdown("**Contexto Operacional (opcional)**")
@@ -538,10 +475,9 @@ def _render_manual_entry(
             lucro = st.number_input("Lucro Cessante (R$)", 0.0, 1e9, 0.0, 100.0, key="me_lucro")
 
         if st.button("➕ Adicionar à Lista", use_container_width=True):
-            from datetime import datetime as _dt
-            n_evt = len(st.session_state["manual_events"]) + 1
+            n_evt    = len(st.session_state["manual_events"]) + 1
             tempo_ac = sum(e["TBF"] for e in st.session_state["manual_events"]) + tbf
-            evento = {
+            evento   = {
                 "OS_Numero":               os_num or f"OS-{data_evt.strftime('%Y')}-{n_evt:04d}",
                 "Tag_Ativo":               tag_eq,
                 "Tipo_Equipamento":        tipo_eq,
@@ -554,12 +490,12 @@ def _render_manual_entry(
                 "Horimetro_Inicio":        0.0,
                 "Horimetro_Evento":        tempo_ac,
                 "Falha":                   int(falha),
-                "Subcomponente":           sub if falha == 1 else "—",
-                "Modo_Falha":              modo if falha == 1 else "Censura (Em Operação)",
+                "Subcomponente":           sub   if falha == 1 else "—",
+                "Modo_Falha":              modo  if falha == 1 else "Censura (Em Operação)",
                 "Causa_Raiz":              causa if falha == 1 else "—",
-                "Mecanismo_Degradacao":    mec if falha == 1 else "—",
+                "Mecanismo_Degradacao":    mec   if falha == 1 else "—",
                 "Tipo_Manutencao":         tipo_m,
-                "Criticidade":             crit if falha == 1 else "—",
+                "Criticidade":             crit  if falha == 1 else "—",
                 "Boundary":                bound if falha == 1 else "—",
                 "Carga_Media_Pct":         float(carga),
                 "Temperatura_Media_C":     float(temp),
@@ -587,9 +523,7 @@ def _render_manual_entry(
             if st.button("💾 Salvar na Base", type="primary", use_container_width=True):
                 try:
                     with st.spinner("Salvando no banco..."):
-                        # Salva histórico rico (taxonomia completa)
                         res_rich = api.history_save_rich(tag_eq, events, meta)
-                        # Salva também histórico slim para o pipeline de análise
                         slim = [{"TBF": e["TBF"], "Tempo_Acumulado": e["Tempo_Acumulado"],
                                  "Falha": e["Falha"]} for e in events]
                         api.history_save(tag_eq, slim, meta)
@@ -609,7 +543,6 @@ def _render_manual_entry(
 
         _render_thresholds()
 
-        # Retorna os dados para análise imediata se o usuário quiser
         if st.button("▶ Analisar Dados Inseridos", use_container_width=True):
             slim = [{"TBF": e["TBF"], "Tempo_Acumulado": e["Tempo_Acumulado"],
                      "Falha": e["Falha"]} for e in events]
@@ -626,22 +559,17 @@ def _render_upload(
     meta: Dict[str, Any]
 ) -> Tuple[Optional[Dict], Optional[List[Dict]], bool, None]:
 
-    with st.expander("📋 Formato esperado do CSV", expanded=False):
+    with st.expander("📋 Guia de Importação — Dados para Análise Prescritiva", expanded=False):
         st.markdown("""
-**O arquivo CSV deve conter pelo menos 2 colunas:**
+### Formato Mínimo — Análise de Confiabilidade
 
 | Coluna | Descrição | Exemplo |
 |---|---|---|
 | **Tempo (TBF)** | Tempo Entre Falhas em horas | `850.5` |
-| **Status** | `1` = falha confirmada, `0` = censura (ainda operando) | `1` |
+| **Status** | `1` = falha confirmada · `0` = censura | `1` |
 
-**Requisitos:**
-- Mínimo de **100 registros**
-- Separador: vírgula `,` ou ponto e vírgula `;`
-- Sem linhas vazias no meio
-- Valores numéricos (sem texto nas colunas de tempo/status)
+**Requisitos mínimos:** ≥ 100 registros, separador `,` ou `;`, sem linhas vazias.
 
-**Exemplo de arquivo válido:**
 ```
 TBF_horas,status
 1200,1
@@ -649,6 +577,37 @@ TBF_horas,status
 1100,0
 950,1
 ```
+
+---
+
+### Formato Estendido — Recomendado para Manutenção Prescritiva com IA
+
+Quanto mais campos você fornecer, mais preciso será o diagnóstico do agente:
+
+| Coluna adicional | O que habilita no agente |
+|---|---|
+| `Subcomponente` | Identifica qual parte do equipamento falha mais |
+| `Modo_Falha` | Gráfico de Pareto de modos + priorização de ações |
+| `Causa_Raiz` | Elimina causas recorrentes no plano prescritivo |
+| `Criticidade` | Pondera urgência das intervenções |
+| `Custo_Reparo_BRL` | Calcula ROI da manutenção preventiva |
+| `TTR` | Estima indisponibilidade e disponibilidade esperada |
+
+> **Dica:** Use o modo **Entrada Manual (ISO 14224)** para inserir esses campos
+> diretamente no sistema e salvá-los no banco de dados por TAG.
+
+---
+
+### Passo a Passo — Manutenção Prescritiva com IA
+
+1. Selecione o equipamento correto no catálogo (sidebar)
+2. Importe o CSV com os dados históricos de falha
+3. Clique em **▶ Processar Dados Reais**
+4. Aguarde a análise de confiabilidade e ML
+5. Acesse a aba **Machine Learning** → sub-aba **🤖 Manutenção Prescritiva**
+6. Clique **Gerar Prescrição com IA**
+7. O agente consulta: risco ML · RUL · catálogo ISO 14224 · histórico de falhas
+8. Receba o plano de ação com prioridades e janelas de intervenção
         """)
 
     file = st.file_uploader("Selecionar arquivo CSV", type=["csv"])

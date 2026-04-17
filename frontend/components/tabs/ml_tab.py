@@ -62,7 +62,7 @@ def render(
         st.markdown("""
 **O que esta aba faz?**
 Combina o modelo paramétrico de confiabilidade com algoritmos de Machine Learning para gerar
-diagnóstico em tempo real e prescrições de manutenção acionáveis.
+diagnóstico em tempo real e prescrições de manutenção acionáveis via Agente de IA.
 
 | Sub-aba | O que analisa |
 |---|---|
@@ -70,6 +70,7 @@ diagnóstico em tempo real e prescrições de manutenção acionáveis.
 | **Detecção de Anomalias** | Identifica TBFs anômalos (falhas precoces ou outliers) via Isolation Forest |
 | **Score de Risco** | Pontuação 0–100 combinando confiabilidade, tendência e anomalias |
 | **Otimização PMO** | Intervalo ótimo de manutenção preventiva pela Teoria da Renovação |
+| **🤖 Manutenção Prescritiva** | Agente Claude com tool_use gera plano de ação priorizado ISO 14224 |
 
 **Score de Risco:**
 - 0–29 → Baixo (verde) — operação normal
@@ -81,11 +82,12 @@ diagnóstico em tempo real e prescrições de manutenção acionáveis.
     st.divider()
 
     # ── Abas ML internas ──────────────────────────────────────────────────────
-    tab_pred, tab_anom, tab_risk, tab_pmo = st.tabs([
+    tab_pred, tab_anom, tab_risk, tab_pmo, tab_presc = st.tabs([
         "📈 Predição & Tendência",
         "🔍 Detecção de Anomalias",
         "⚠️ Score de Risco",
         "🔧 Otimização PMO",
+        "🤖 Manutenção Prescritiva",
     ])
 
     with tab_pred:
@@ -99,6 +101,9 @@ diagnóstico em tempo real e prescrições de manutenção acionáveis.
 
     with tab_pmo:
         _render_pmo(best, meta)
+
+    with tab_presc:
+        _render_prescriptive(ml, fit, rul, records, meta)
 
 
 # ─── Sub-renderizadores ───────────────────────────────────────────────────────
@@ -395,3 +400,205 @@ $$C(t_p) = \\frac{{C_p \\cdot R(t_p) + C_u \\cdot F(t_p)}}{{\\int_0^{{t_p}} R(x)
 
 > *Válido para regime de desgaste (β={nbr(beta, 2)} > 1). Revisar a cada ciclo com dados atualizados.*
 """)
+
+
+# ─── Manutenção Prescritiva com Agente de IA ──────────────────────────────────
+
+def _render_prescriptive(
+    ml: Dict[str, Any],
+    fit: Dict[str, Any],
+    rul: Dict[str, Any],
+    records: List[Dict],
+    meta: Dict[str, Any],
+) -> None:
+
+    with st.expander("ℹ️ Como funciona o Agente de Manutenção Prescritiva", expanded=False):
+        st.markdown("""
+### O que é Manutenção Prescritiva com IA?
+
+A manutenção prescritiva vai além do diagnóstico: não apenas detecta o risco, mas **prescreve ações
+específicas** com prioridade, janela de intervenção e justificativa técnica.
+
+### Arquitetura do Agente
+
+```
+Dados do Ativo ──► Agente Claude (claude-opus-4-7)
+                        │
+              ┌─────────┼──────────┐
+              ▼         ▼          ▼
+    get_catalog    compute_      classify_
+    _scenarios     maintenance   urgency
+                   _window
+              │         │          │
+              └─────────┴──────────┘
+                        │
+                        ▼
+              Plano Prescritivo ISO 14224
+```
+
+### Ferramentas do Agente
+
+| Ferramenta | O que faz |
+|---|---|
+| `get_catalog_scenarios` | Busca os modos de falha mais críticos e prováveis no catálogo ISO 14224 |
+| `compute_maintenance_window` | Calcula a janela de intervenção com base no RUL + Score de Risco + PMO |
+| `classify_urgency` | Define o nível de urgência: Crítica / Alta / Média / Baixa |
+
+O agente raciocina em múltiplos passos, chama as ferramentas que julgar necessárias
+e sintetiza tudo em um **plano de ação priorizado com justificativas técnicas**.
+
+### Passo a Passo para Usar
+
+1. **Execute a análise completa** — clique em Executar / Processar na sidebar
+2. **Aguarde o carregamento** de todas as abas (LDA, RUL, ML)
+3. **Acesse esta sub-aba** — Manutenção Prescritiva
+4. **Clique em "Gerar Prescrição com IA"**
+5. O agente analisa: score de risco · RUL · tendência · catálogo ISO 14224
+6. **Revise o plano prescritivo** — prioridades, ações e janelas de intervenção
+
+> **Sem ANTHROPIC_API_KEY:** O sistema usa Expert System baseado em regras ISO 14224
+> (sem custo, sem API externa) como fallback automático.
+        """)
+
+    risk  = ml["risk"]
+    trend = ml["trend"]
+    best  = fit["best"]
+
+    # ── Estado atual do ativo ─────────────────────────────────────────────────
+    urgency_colors = {"Crítica": "#DC2626", "Alta": "#F59E0B", "Média": "#3B82F6", "Baixa": "#10B981"}
+    risk_color = urgency_colors.get(risk["classification"], "#3B82F6")
+
+    st.markdown("### Estado Atual do Ativo")
+    kpi_row([
+        ("Score de Risco",    f"{risk['score']}/100",          risk["classification"]),
+        ("RUL Estimado",      f"{rul['rul_time']:.0f} h",       f"R(t)={rul['r_current']:.1%}"),
+        ("Tendência",         trend["trend_type"][:20],         f"{nbr(trend['degradation_rate'], 2)}%/ciclo"),
+        ("Horímetro",         f"{meta['horimetro_atual']:.0f} h", meta["tag"]),
+    ])
+
+    st.markdown("---")
+
+    # ── Botão para gerar prescrição ───────────────────────────────────────────
+    pmo_tp = st.session_state.get("_pmo_tp_otimo")
+
+    if st.button(
+        "🤖 Gerar Prescrição com IA",
+        type="primary",
+        use_container_width=True,
+        help="O agente Claude analisa os dados e gera um plano prescritivo ISO 14224",
+    ):
+        with st.spinner("🤖 Agente analisando dados do ativo…"):
+            try:
+                result = api.prescriptive_agent(
+                    equipment_type      = meta["tipo_equipamento"],
+                    risk_score          = int(risk["score"]),
+                    risk_classification = risk["classification"],
+                    rul_hours           = float(rul["rul_time"]),
+                    horimetro_atual     = float(meta["horimetro_atual"]),
+                    failure_count       = sum(1 for r in records if r.get("Falha") == 1),
+                    anomaly_count       = int(ml["anomalies"]["count"]),
+                    trend_type          = trend["trend_type"],
+                    degradation_rate    = float(trend["degradation_rate"]),
+                    tag                 = meta["tag"],
+                    weibull_beta        = best.get("beta"),
+                    weibull_eta         = best.get("eta"),
+                    pmo_tp_otimo        = pmo_tp,
+                    meta                = meta,
+                )
+                st.session_state["_prescriptive_result"] = result
+            except Exception as e:
+                st.error(f"❌ Erro ao gerar prescrição: {e}")
+                return
+
+    result = st.session_state.get("_prescriptive_result")
+    if not result:
+        st.info(
+            "Clique em **🤖 Gerar Prescrição com IA** para iniciar o agente."
+        )
+        return
+
+    # ── Exibição do resultado ─────────────────────────────────────────────────
+    nivel    = result.get("nivel_urgencia", "Média")
+    cor      = result.get("cor_urgencia", urgency_colors.get(nivel, "#3B82F6"))
+    janela   = result.get("janela_intervencao", "—")
+    hs       = result.get("proxima_intervencao_h")
+    ia_ativa = result.get("ia_disponivel", False)
+
+    # Badge de modo
+    if ia_ativa:
+        st.success("Prescrição gerada pelo **Agente Claude** (claude-opus-4-7 + tool_use)", icon="🤖")
+    else:
+        st.info("Prescrição gerada pelo **Expert System** (ANTHROPIC_API_KEY não configurada)", icon="⚙️")
+
+    # Sumário executivo com badge de urgência
+    st.markdown(
+        f'<div style="background:{cor}22;border-left:5px solid {cor};'
+        f'padding:14px 18px;border-radius:6px;margin:12px 0;">'
+        f'<span style="font-size:18px;font-weight:700;color:{cor};">{nivel}</span>'
+        f'<br/><span style="color:#E2E8F0;font-size:14px;">{result.get("sumario_executivo","")}</span>'
+        f'{"<br/><span style=\\"color:#94A3B8;font-size:13px;\\">Janela: " + janela + (" — " + f"{hs:.0f}h" if hs else "") + "</span>" if janela != "—" else ""}'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    # Diagnóstico técnico
+    diagnostico = result.get("diagnostico") or result.get("texto_completo", "")
+    if diagnostico:
+        with st.expander("📋 Diagnóstico Técnico Completo", expanded=False):
+            st.markdown(diagnostico)
+
+    # Raciocínio do agente
+    steps = result.get("raciocinio_agente", [])
+    if steps:
+        with st.expander(f"🔍 Raciocínio do Agente ({len(steps)} passo(s))", expanded=False):
+            for s in steps:
+                st.caption(s)
+
+    # Tabela de ações priorizadas
+    acoes = result.get("acoes", [])
+    if acoes:
+        st.markdown(f"### Plano de Ação Prescritivo — {len(acoes)} Intervenção(ões)")
+
+        crit_colors = {"Alta": "🔴", "Média": "🟡", "Baixa": "🟢"}
+
+        rows = []
+        for a in acoes:
+            rows.append({
+                "Pri.":           f"#{a.get('prioridade', '—')}",
+                "Subcomponente":  a.get("subcomponente", "—"),
+                "Modo de Falha":  a.get("modo_falha", "—"),
+                "Causa Raiz":     a.get("causa_raiz", "—"),
+                "Criticidade":    crit_colors.get(a.get("criticidade", "—"), "⚪") + " " + a.get("criticidade", "—"),
+                "Boundary":       a.get("boundary", "—"),
+                "Janela":         a.get("janela_intervencao", "—"),
+                "TTR Esp. (h)":   f"{a.get('ttr_esperado_h', '—')}",
+                "Custo Rel.":     f"{a.get('custo_relativo', 1.0):.1f}×",
+            })
+
+        html_table(pd.DataFrame(rows))
+
+        # Detalhes de cada ação
+        st.markdown("#### Detalhes das Ações")
+        for a in acoes:
+            crit_icon = crit_colors.get(a.get("criticidade", "—"), "⚪")
+            with st.expander(
+                f"{crit_icon} #{a.get('prioridade')} — {a.get('subcomponente','—')} · {a.get('modo_falha','—')}",
+                expanded=(a.get("prioridade") == 1),
+            ):
+                col_l, col_r = st.columns(2)
+                with col_l:
+                    st.markdown(f"**Subcomponente:** {a.get('subcomponente','—')}")
+                    st.markdown(f"**Modo de Falha:** {a.get('modo_falha','—')}")
+                    st.markdown(f"**Causa Raiz:** {a.get('causa_raiz','—')}")
+                    st.markdown(f"**Mecanismo:** {a.get('mecanismo','—')}")
+                with col_r:
+                    st.markdown(f"**Criticidade:** {crit_icon} {a.get('criticidade','—')}")
+                    st.markdown(f"**Boundary:** {a.get('boundary','—')}")
+                    st.markdown(f"**Janela:** {a.get('janela_intervencao','—')}")
+                    if a.get("ttr_esperado_h"):
+                        st.markdown(f"**TTR Esperado:** {a['ttr_esperado_h']} h")
+                st.info(f"**Ação:** {a.get('acao_recomendada','—')}")
+                if a.get("justificativa"):
+                    st.caption(f"Justificativa: {a['justificativa']}")
+    else:
+        st.warning("Nenhuma ação prescrita — verifique os dados de entrada.")

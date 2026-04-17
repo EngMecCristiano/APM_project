@@ -97,7 +97,7 @@ O modelo resultante permite calcular probabilidades de falha, vida útil esperad
     html_table(df_rank)
 
     if abs(delta) > 4:
-        st.success(f"✅ **{best['model_name']}** significativamente melhor (|ΔAICc| = {nbr(abs(delta), 1)} > 4)",
+        st.success(f"**{best['model_name']}** significativamente melhor (|ΔAICc| = {nbr(abs(delta), 1)} > 4)",
                    icon="✅")
     elif abs(delta) > 2:
         st.info(f"ℹ️ **{best['model_name']}** tem suporte moderado (|ΔAICc| = {nbr(abs(delta), 1)})")

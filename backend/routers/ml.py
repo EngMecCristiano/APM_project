@@ -4,9 +4,12 @@ Endpoints: analyze (pipeline completo ML em uma chamada)
 """
 from __future__ import annotations
 
+from typing import Any, Dict
+
 from fastapi import APIRouter, HTTPException
 
-from backend.schemas.models import MLAnalysisRequest, MLAnalysisResult
+from backend.schemas.models import MLAnalysisRequest, MLAnalysisResult, PrescriptiveRequest
+from backend.services import ml_engine, prescriptive_service
 from backend.services.ml_engine import MLOrchestrator
 
 router = APIRouter(prefix="/ml", tags=["Machine Learning"])
@@ -33,3 +36,18 @@ def analyze(req: MLAnalysisRequest) -> MLAnalysisResult:
         rul_data=req.rul_data,
         risk_thresholds=req.risk_thresholds,
     )
+
+
+@router.post(
+    "/prescriptive",
+    summary="Agente de Manutenção Prescritiva com IA (ISO 14224)",
+)
+def prescriptive(req: PrescriptiveRequest) -> Dict[str, Any]:
+    """
+    Executa o agente Claude (claude-opus-4-7 + tool_use) para gerar plano prescritivo.
+    Ferramentas: get_catalog_scenarios · compute_maintenance_window · classify_urgency.
+    Fallback automático para Expert System se ANTHROPIC_API_KEY não estiver configurada.
+    """
+    from backend.config.settings import EQUIPMENT_CATALOG
+    catalog = EQUIPMENT_CATALOG.get("equipment", [])
+    return prescriptive_service.run(req.model_dump(), catalog)

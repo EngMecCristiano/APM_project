@@ -1,12 +1,14 @@
 """
-Aba Auditoria — EDA + Validação estatística.
+Aba Auditoria — EDA + Validação estatística + Taxonomia ISO 14224.
 """
 from __future__ import annotations
 
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
+import frontend.api_client as api
 from frontend.components.charts import plot_tbf_histogram, plot_boxplot, plot_qq
 from frontend.components.ui_helpers import nbr, kpi_row, html_table
 from frontend.styles.theme import PLOTLY_CONFIG
@@ -103,6 +105,11 @@ Valida a qualidade dos dados e avalia o quanto o modelo ajustado representa bem 
     with tab_d:
         _render_diagnostics(audit)
 
+    st.divider()
+
+    # ── Taxonomia ISO 14224 ───────────────────────────────────────────────────
+    _render_taxonomy(meta)
+
 
 def _render_model_validation(audit):
     st.markdown("#### KPIs de Confiabilidade")
@@ -180,3 +187,188 @@ def _render_diagnostics(audit):
             st.success("🟢 Tendência de melhoria — TBF aumentando ao longo do tempo.")
     else:
         st.info("ℹ️ Sem tendência significativa — processo estacionário.")
+
+
+# ─── Taxonomia ISO 14224 ──────────────────────────────────────────────────────
+
+def _plot_pareto(series: pd.Series, title: str, top_n: int = 12) -> go.Figure:
+    """Pareto: barras de contagem + linha de % acumulada + referência 80%."""
+    counts = series.value_counts().head(top_n)
+    labels = counts.index.tolist()
+    vals   = counts.values.tolist()
+    total  = sum(vals)
+    cum    = [sum(vals[: i + 1]) / total * 100 for i in range(len(vals))]
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=labels, y=vals,
+        name="Ocorrências",
+        marker_color="#00D4FF",
+        opacity=0.85,
+        yaxis="y",
+    ))
+    fig.add_trace(go.Scatter(
+        x=labels, y=cum,
+        name="% Acumulada",
+        mode="lines+markers",
+        line=dict(color="#F59E0B", width=2),
+        marker=dict(size=6),
+        yaxis="y2",
+    ))
+    fig.add_hline(
+        y=80, line_dash="dash", line_color="#DC2626",
+        annotation_text="80%", annotation_position="right",
+        yref="y2",
+    )
+    fig.update_layout(
+        title=title,
+        plot_bgcolor="#0E1117",
+        paper_bgcolor="#0E1117",
+        font=dict(color="#E2E8F0"),
+        xaxis=dict(tickangle=-35, showgrid=False),
+        yaxis=dict(title="Ocorrências", gridcolor="#1E293B"),
+        yaxis2=dict(
+            title="% Acumulada",
+            overlaying="y",
+            side="right",
+            range=[0, 110],
+            showgrid=False,
+        ),
+        legend=dict(orientation="h", y=1.12, x=0),
+        margin=dict(t=60, b=80),
+    )
+    return fig
+
+
+def _render_taxonomy(meta: Dict[str, Any]) -> None:
+    """Pareto e estatísticas dos modos de falha a partir do histórico ISO 14224 salvo."""
+    st.markdown("### 🏷️ Taxonomia ISO 14224 — Análise de Modos de Falha")
+
+    tag = meta.get("tag", "")
+    rich: Optional[List[Dict]] = None
+
+    try:
+        rich = api.history_load_rich(tag)
+    except Exception as e:
+        st.warning(f"Não foi possível carregar histórico ISO 14224: {e}")
+
+    if not rich:
+        st.info(
+            f"Sem dados ISO 14224 para TAG **{tag}**. "
+            "Para gerar esta análise:\n\n"
+            "1. Use o modo **Entrada Manual (ISO 14224)** na sidebar e salve eventos com taxonomia completa\n"
+            "2. Ou use a **Simulação Enriquecida** que gera automaticamente todos os campos ISO 14224"
+        )
+        return
+
+    df = pd.DataFrame(rich)
+    # Filtra apenas falhas confirmadas para o Pareto
+    df_falhas = df[df.get("Falha", df.get("falha", pd.Series())).astype(int) == 1] if "Falha" in df.columns else df
+
+    n_total  = len(df)
+    n_falhas = len(df_falhas)
+    st.caption(f"TAG **{tag}** — {n_total} registros ISO 14224 ({n_falhas} falhas confirmadas)")
+
+    if n_falhas == 0:
+        st.info("Nenhuma falha confirmada nos registros ISO 14224. Pareto indisponível.")
+        return
+
+    # KPIs de taxonomia
+    kpi_row([
+        ("Registros ISO 14224", str(n_total),   "histórico rico"),
+        ("Falhas Confirmadas",  str(n_falhas),  "Falha = 1"),
+        ("Modos de Falha",      str(df_falhas["Modo_Falha"].nunique()) if "Modo_Falha" in df_falhas.columns else "—", "únicos"),
+        ("Subcomponentes",      str(df_falhas["Subcomponente"].nunique()) if "Subcomponente" in df_falhas.columns else "—", "únicos"),
+    ])
+
+    # Tabs dos gráficos de Pareto
+    tab_modo, tab_sub, tab_causa, tab_bound, tab_crit = st.tabs([
+        "Modos de Falha",
+        "Subcomponentes",
+        "Causa Raiz",
+        "Boundary",
+        "Criticidade",
+    ])
+
+    with tab_modo:
+        if "Modo_Falha" in df_falhas.columns:
+            st.plotly_chart(
+                _plot_pareto(df_falhas["Modo_Falha"], "Pareto — Modos de Falha"),
+                use_container_width=True, config=PLOTLY_CONFIG,
+            )
+            st.caption("Os modos à esquerda da linha 80% causam 80% das falhas — foco de priorização.")
+        else:
+            st.info("Coluna Modo_Falha não encontrada nos registros.")
+
+    with tab_sub:
+        if "Subcomponente" in df_falhas.columns:
+            st.plotly_chart(
+                _plot_pareto(df_falhas["Subcomponente"], "Pareto — Subcomponentes"),
+                use_container_width=True, config=PLOTLY_CONFIG,
+            )
+        else:
+            st.info("Coluna Subcomponente não encontrada nos registros.")
+
+    with tab_causa:
+        if "Causa_Raiz" in df_falhas.columns:
+            st.plotly_chart(
+                _plot_pareto(df_falhas["Causa_Raiz"], "Pareto — Causas Raiz"),
+                use_container_width=True, config=PLOTLY_CONFIG,
+            )
+        else:
+            st.info("Coluna Causa_Raiz não encontrada nos registros.")
+
+    with tab_bound:
+        if "Boundary" in df_falhas.columns:
+            counts = df_falhas["Boundary"].value_counts()
+            total  = counts.sum()
+            fig_pie = go.Figure(go.Pie(
+                labels=counts.index.tolist(),
+                values=counts.values.tolist(),
+                hole=0.45,
+                marker=dict(colors=["#00D4FF", "#F59E0B"]),
+                textinfo="label+percent",
+            ))
+            fig_pie.update_layout(
+                title="Boundary — Interno vs. Externo",
+                plot_bgcolor="#0E1117", paper_bgcolor="#0E1117",
+                font=dict(color="#E2E8F0"),
+                showlegend=True,
+            )
+            st.plotly_chart(fig_pie, use_container_width=True, config=PLOTLY_CONFIG)
+            st.caption(
+                "**Interno:** falha originada dentro do equipamento. "
+                "**Externo:** causa no processo, ambiente ou interface."
+            )
+        else:
+            st.info("Coluna Boundary não encontrada nos registros.")
+
+    with tab_crit:
+        if "Criticidade" in df_falhas.columns:
+            counts = df_falhas["Criticidade"].value_counts().reindex(["Alta", "Média", "Baixa"]).dropna()
+            colors = ["#DC2626", "#F59E0B", "#10B981"]
+            fig_bar = go.Figure(go.Bar(
+                x=counts.index.tolist(),
+                y=counts.values.tolist(),
+                marker_color=colors[: len(counts)],
+                text=counts.values.tolist(),
+                textposition="outside",
+            ))
+            fig_bar.update_layout(
+                title="Distribuição de Criticidade das Falhas",
+                plot_bgcolor="#0E1117", paper_bgcolor="#0E1117",
+                font=dict(color="#E2E8F0"),
+                xaxis=dict(showgrid=False),
+                yaxis=dict(title="Ocorrências", gridcolor="#1E293B"),
+            )
+            st.plotly_chart(fig_bar, use_container_width=True, config=PLOTLY_CONFIG)
+        else:
+            st.info("Coluna Criticidade não encontrada nos registros.")
+
+    # Download do histórico rico
+    st.download_button(
+        "📥 Download Histórico ISO 14224 (CSV)",
+        data=df.to_csv(index=False).encode(),
+        file_name=f"iso14224_{tag}.csv",
+        mime="text/csv",
+    )

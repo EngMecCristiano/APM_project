@@ -22,6 +22,7 @@ def render() -> None:
         "🔮 RUL",
         "📈 Crow-AMSAA",
         "🧠 Machine Learning",
+        "🤖 Manutenção Prescritiva",
         "🔧 PMO",
         "📋 ISO 14224",
         "🏭 Cases",
@@ -39,12 +40,14 @@ def render() -> None:
     with sections[4]:
         _section_ml()
     with sections[5]:
-        _section_pmo()
+        _section_prescritiva()
     with sections[6]:
-        _section_iso14224()
+        _section_pmo()
     with sections[7]:
-        _section_cases()
+        _section_iso14224()
     with sections[8]:
+        _section_cases()
+    with sections[9]:
         _section_glossario()
 
 
@@ -67,22 +70,23 @@ A barra lateral contém todos os controles de entrada de dados e parâmetros de 
 
     with st.expander("**Passo 2 — Selecionar o Equipamento**"):
         st.markdown("""
-**Campo: Perfil de Equipamento**
+**Campo: Classe do Ativo — Catálogo ISO 14224**
 
-Escolha um dos perfis pré-configurados representativos da mineração:
+Selecione o equipamento no catálogo agrupado por setor industrial:
 
-| Perfil | β | η (h) | Aplicação típica |
-|---|---|---|---|
-| Britador Cônico HP500 | 2.1 | 3.200 h | Cominuição primária |
-| Bomba Centrífuga Warman | 1.8 | 2.800 h | Polpas abrasivas |
-| Redutor de Velocidade | 2.8 | 5.500 h | Transportadores de correia |
-| Motor Elétrico 6,6 kV | 1.5 | 8.000 h | Acionamentos críticos |
-| Peneira Vibratória | 1.6 | 2.100 h | Classificação granulométrica |
+| Setor | Exemplos |
+|---|---|
+| Mineração | Britador Cônico, Peneira Vibratória, Bomba de Polpa, Transportador de Correia |
+| Petróleo & Gás | Compressor Centrífugo, Bomba Centrífuga, Válvula de Controle |
+| Energia | Turbina a Vapor, Gerador Síncrono |
+| Geral | Motor Elétrico |
 
-**Ou use "Personalizado"** para inserir seus próprios parâmetros Weibull (β, η) ou Lognormal (μ, σ).
+Cada equipamento no catálogo possui parâmetros Weibull (β, η), classe ISO 14224
+e cenários de falha com subcomponente, modo, causa raiz, mecanismo e criticidade.
 
 > **β = Parâmetro de Forma:** define o regime de falha. β < 1 = mortalidade infantil | β ≈ 1 = aleatório | β > 1 = desgaste.
 > **η = Vida Característica:** 63,2% dos equipamentos terão falhado até este horímetro.
+> **Os cenários de falha do catálogo alimentam o Agente de Manutenção Prescritiva (IA).**
 """)
 
     with st.expander("**Passo 3 — Definir TAG e Horímetro**"):
@@ -188,6 +192,23 @@ Clique em **"📄 Gerar Relatório PDF"** no rodapé da página. O relatório in
 - Resultados Crow-AMSAA e Score de Risco ML
 - Auditoria estatística (KS, Spearman, outliers)
 - Ranking de modelos AICc
+""")
+
+    with st.expander("**Passo 8 — Manutenção Prescritiva com IA (novo)**"):
+        st.markdown("""
+Após a análise completa, acesse a aba **Machine Learning → 🤖 Manutenção Prescritiva**.
+
+1. Revise o **Score de Risco** e **RUL** exibidos no topo
+2. Clique em **"🤖 Gerar Prescrição com IA"**
+3. O **Agente Claude** (claude-opus-4-7) executa automaticamente:
+   - Consulta os cenários de falha do catálogo ISO 14224
+   - Calcula a janela de intervenção (RUL + Risco + PMO)
+   - Classifica o nível de urgência
+4. Receba o **Plano Prescritivo**: ações priorizadas, janelas, TTR esperado e justificativas
+5. Na aba **Auditoria → Taxonomia ISO 14224**: veja o Pareto de modos de falha do histórico
+
+> **Sem chave de API:** o sistema usa o Expert System ISO 14224 como fallback automático.
+> Para ativar o agente Claude: configure a variável `ANTHROPIC_API_KEY` no ambiente.
 """)
 
 
@@ -622,7 +643,143 @@ e tarde demais (risco de falha com custo alto).
 """)
 
 
-# ─── Seção 6: PMO ────────────────────────────────────────────────────────────
+# ─── Seção 6: Manutenção Prescritiva ─────────────────────────────────────────
+
+def _section_prescritiva() -> None:
+    st.markdown("### 🤖 Manutenção Prescritiva com Agente de IA")
+    st.markdown("""
+A **Manutenção Prescritiva** é o nível mais avançado da hierarquia de manutenção baseada em dados.
+Enquanto a preditiva responde *"quando vai falhar?"*, a prescritiva responde
+*"o que fazer, em qual componente, com qual prioridade e em qual janela de tempo?"*
+""")
+
+    with st.expander("📐 Hierarquia de Manutenção"):
+        st.markdown("""
+| Nível | Pergunta | Técnica |
+|---|---|---|
+| **Reativa** | O que quebrou? | Corretiva de emergência |
+| **Preventiva** | Quando trocar? | Intervalos fixos |
+| **Preditiva** | Quando vai falhar? | RUL, Weibull, ML |
+| **Prescritiva** | O que fazer, onde e quando? | Agente IA + ISO 14224 |
+
+A prescritiva combina **todos os níveis anteriores** e adiciona a camada de decisão
+— traduzindo dados em ações específicas e justificadas.
+""")
+
+    with st.expander("🤖 Arquitetura do Agente Claude"):
+        st.markdown("""
+O agente usa a API da Anthropic (modelo `claude-opus-4-7`) com **tool_use**:
+o modelo decide autonomamente quais ferramentas chamar e quantas vezes, sem sequência fixa.
+
+```
+Estado do Ativo ──► Agente Claude
+                    │
+         ┌──────────┼──────────────┐
+         ▼          ▼              ▼
+  get_catalog   compute_        classify_
+  _scenarios    maintenance     urgency
+                _window
+         │          │              │
+         └──────────┴──────────────┘
+                    │
+                    ▼
+         Plano Prescritivo ISO 14224
+         (JSON estruturado + diagnóstico)
+```
+
+**Entrada do agente:**
+- Score de Risco ML (0–100)
+- RUL estimado (horas)
+- Parâmetros Weibull (β, η)
+- Tendência TBF (tipo + taxa de degradação)
+- Contagem de anomalias e falhas
+- Intervalo ótimo PMO (se calculado)
+
+**Ferramentas disponíveis:**
+
+| Ferramenta | Ação |
+|---|---|
+| `get_catalog_scenarios` | Busca os N cenários mais críticos do catálogo ISO 14224 para o equipamento |
+| `compute_maintenance_window` | Calcula a janela temporal de intervenção (Imediata / Curto / Médio / Planejado) |
+| `classify_urgency` | Classifica urgência (Crítica / Alta / Média / Baixa) com base no estado integrado |
+
+**Saída estruturada:**
+- Sumário executivo (1–2 frases acionáveis)
+- Nível de urgência com cor RAG (Vermelho/Âmbar/Verde)
+- Janela de intervenção em horas
+- Lista de ações priorizadas com: subcomponente, modo de falha, causa raiz, mecanismo,
+  criticidade, boundary, TTR esperado, custo relativo e justificativa técnica
+- Raciocínio do agente (quais ferramentas foram chamadas e com quais inputs)
+""")
+
+    with st.expander("⚙️ Fallback — Expert System ISO 14224"):
+        st.markdown("""
+Quando `ANTHROPIC_API_KEY` não está configurada (ou o pacote `anthropic` não está instalado),
+o sistema usa automaticamente o **Expert System** baseado em regras:
+
+1. Consulta os cenários do catálogo ISO 14224 (mesma lógica da ferramenta `get_catalog_scenarios`)
+2. Calcula a janela de intervenção (mesma lógica de `compute_maintenance_window`)
+3. Classifica urgência (mesma lógica de `classify_urgency`)
+4. Gera o plano prescritivo com as mesmas colunas
+
+A diferença: o Expert System segue uma sequência fixa sem raciocínio adaptativo.
+O agente Claude pode identificar padrões cruzados e ajustar a análise com base nos dados.
+""")
+
+    with st.expander("📊 Interpretando o Plano Prescritivo"):
+        st.markdown("""
+**Nível de Urgência:**
+| Nível | Score | Ação |
+|---|---|---|
+| 🔴 Crítica | ≥ 70 ou RUL < 100h | Parar imediatamente para inspeção |
+| 🟡 Alta | 50–69 | Programar parada em 2–7 dias |
+| 🔵 Média | 30–49 | Incluir na próxima janela preventiva |
+| 🟢 Baixa | < 30 | Monitorar e manter plano vigente |
+
+**Colunas do Plano de Ação:**
+| Coluna | Significado |
+|---|---|
+| **Prioridade** | Ordem de intervenção (1 = mais urgente) — calculada por `prob × criticidade` |
+| **Subcomponente** | Parte específica do equipamento a inspecionar/substituir |
+| **Modo de Falha** | Como a falha se manifesta (ex: Desgaste de Manta, Fratura de Eixo) |
+| **Causa Raiz** | Origem da falha (ex: Abrasão por Material, Desbalanceamento) |
+| **Boundary** | Interno (equipamento) vs Externo (processo/ambiente) — foca a investigação |
+| **TTR Esperado** | Tempo de reparo estimado em horas (exp do log-normal do catálogo) |
+| **Custo Relativo** | Fator de custo relativo ao custo base do equipamento |
+| **Janela** | Timing recomendado para esta ação específica |
+
+**Pareto de Modos de Falha (aba Auditoria):**
+Após inserir dados históricos via Entrada Manual ISO 14224, a aba Auditoria mostra
+o gráfico de Pareto dos modos de falha reais do seu ativo — complementando o plano prescritivo
+com evidência histórica.
+""")
+
+    with st.expander("🔧 Configuração da API Key (Railway / Docker)"):
+        st.markdown("""
+Para ativar o Agente Claude, configure a variável de ambiente no serviço **backend**:
+
+```
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+**Railway:**
+1. Acesse o serviço `backend` no dashboard Railway
+2. Variables → New Variable
+3. Nome: `ANTHROPIC_API_KEY` | Valor: sua chave Anthropic
+
+**Docker Compose:**
+```yaml
+backend:
+  environment:
+    - ANTHROPIC_API_KEY=sk-ant-...
+```
+
+**Sem a chave:** o sistema funciona normalmente com o Expert System.
+A chave é necessária apenas para a camada de raciocínio adaptativo do agente.
+""")
+
+
+# ─── Seção 7: PMO ────────────────────────────────────────────────────────────
 
 def _section_pmo() -> None:
     st.markdown("### 🔧 PMO — Preventive Maintenance Optimization")
