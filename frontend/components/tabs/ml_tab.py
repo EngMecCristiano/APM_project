@@ -652,12 +652,52 @@ e sintetiza tudo em um **plano de ação priorizado com justificativas técnicas
         with st.expander("📋 Diagnóstico Técnico Completo", expanded=True):
             st.markdown(diagnostico)
 
-    # Raciocínio do agente
+    # Raciocínio do agente — timeline visual
     steps = result.get("raciocinio_agente", [])
     if steps:
-        with st.expander(f"🔍 Raciocínio do Agente ({len(steps)} passo(s))", expanded=False):
-            for s in steps:
-                st.caption(s)
+        _TOOL_META = {
+            "get_catalog_scenarios":      ("📋", "Consultou Catálogo ISO 14224",  "#00B4D8"),
+            "compute_maintenance_window": ("🕐", "Calculou Janela de Intervenção", "#10B981"),
+            "classify_urgency":           ("⚠️", "Classificou Urgência",           "#F59E0B"),
+        }
+        tool_steps = [s for s in steps if s.startswith("🔧")]
+        other_steps = [s for s in steps if not s.startswith("🔧")]
+
+        n_tools = len(tool_steps)
+        label = f"🔍 Raciocínio do Agente — {n_tools} ferramenta(s) utilizada(s)"
+        with st.expander(label, expanded=False):
+            if tool_steps:
+                html = '<div style="display:flex;flex-direction:column;gap:8px;padding:4px 0;">'
+                for i, step in enumerate(tool_steps):
+                    # extrai nome da ferramenta do texto "🔧 nome_ferramenta({...}…)"
+                    raw = step.replace("🔧 ", "")
+                    tool_name = raw.split("(")[0].strip()
+                    icon, label_pt, color = _TOOL_META.get(
+                        tool_name, ("🔧", tool_name, "#6B7280")
+                    )
+                    html += f"""
+                    <div style="display:flex;align-items:center;gap:12px;
+                                background:rgba(255,255,255,0.04);border-left:3px solid {color};
+                                border-radius:6px;padding:10px 14px;">
+                      <div style="font-size:20px;min-width:28px;text-align:center;">{icon}</div>
+                      <div>
+                        <div style="font-size:12px;font-weight:700;color:{color};
+                                    letter-spacing:0.5px;">PASSO {i+1}</div>
+                        <div style="font-size:14px;color:#E2E8F0;font-weight:600;">{label_pt}</div>
+                        <div style="font-size:11px;color:#64748B;margin-top:2px;">{tool_name}</div>
+                      </div>
+                      <div style="margin-left:auto;font-size:18px;">✅</div>
+                    </div>"""
+                html += "</div>"
+                st.markdown(html, unsafe_allow_html=True)
+
+            for s in other_steps:
+                if s.startswith("[Erro"):
+                    st.error(s)
+                elif s.startswith("[Fallback"):
+                    st.warning(s)
+                else:
+                    st.caption(s)
 
     # Tabela de ações priorizadas
     acoes = result.get("acoes", [])
