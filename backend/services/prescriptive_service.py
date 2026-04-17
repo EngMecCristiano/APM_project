@@ -380,10 +380,36 @@ def _run_agent(req: Dict[str, Any], catalog: List[Dict], _anthropic: Any) -> Dic
     """Loop do agente Claude com tool_use."""
     client = _anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
+    meta = req.get("meta", {})
+
+    # Bloco de metadados ISO 14224 — só inclui campos preenchidos
+    meta_lines = []
+    if meta.get("fabricante"):
+        meta_lines.append(f"**Fabricante:** {meta['fabricante']}")
+    if meta.get("modelo"):
+        meta_lines.append(f"**Modelo / Referência:** {meta['modelo']}")
+    if meta.get("numero_serie"):
+        meta_lines.append(f"**Número de Série:** {meta['numero_serie']}")
+    if meta.get("data_instalacao"):
+        meta_lines.append(f"**Data de Instalação:** {meta['data_instalacao']}")
+    if meta.get("classificacao_ambiental"):
+        meta_lines.append(f"**Classificação Ambiental (ISO 14224):** {meta['classificacao_ambiental']}")
+    if meta.get("setor"):
+        meta_lines.append(f"**Setor / Unidade:** {meta['setor']}")
+    if meta.get("responsavel_manutencao"):
+        meta_lines.append(f"**Responsável pela Manutenção:** {meta['responsavel_manutencao']}")
+    if meta.get("data_estudo"):
+        meta_lines.append(f"**Data da Análise:** {meta['data_estudo']}")
+
+    meta_block = ("\n\n**Metadados ISO 14224:**\n" + "\n".join(meta_lines)) if meta_lines else ""
+
     user_msg = (
-        f"Analise o estado atual do ativo e gere o plano prescritivo:\n\n"
+        f"Analise o estado atual do ativo e gere o plano prescritivo completo.\n\n"
+        f"## Identificação do Ativo\n"
         f"**Equipamento:** {req['equipment_type']}\n"
-        f"**TAG:** {req['tag']}\n"
+        f"**TAG:** {req['tag']}"
+        f"{meta_block}\n\n"
+        f"## Dados de Confiabilidade e ML\n"
         f"**Score de Risco ML:** {req['risk_score']}/100 ({req['risk_classification']})\n"
         f"**RUL Estimado:** {req['rul_hours']:.0f} h\n"
         f"**Horímetro Atual:** {req['horimetro_atual']:.0f} h\n"
@@ -392,7 +418,7 @@ def _run_agent(req: Dict[str, Any], catalog: List[Dict], _anthropic: Any) -> Dic
         f"**Falhas no histórico:** {req['failure_count']}\n"
         f"**Anomalias detectadas:** {req['anomaly_count']}\n"
         f"**PMO Intervalo Ótimo:** {req.get('pmo_tp_otimo') or 'Não calculado'} h\n\n"
-        "Execute a análise completa usando as três ferramentas disponíveis."
+        "Use as três ferramentas disponíveis e inclua os metadados do ativo no diagnóstico e no relatório final."
     )
 
     messages: List[Dict] = [{"role": "user", "content": user_msg}]

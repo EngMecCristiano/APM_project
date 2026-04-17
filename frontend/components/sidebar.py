@@ -474,7 +474,13 @@ def _render_manual_entry(
         with c10:
             lucro = st.number_input("Lucro Cessante (R$)", 0.0, 1e9, 0.0, 100.0, key="me_lucro")
 
+        _TIPOS_CENSURA_FRONT = {"Preventiva", "Preditiva", "Censura"}
+        if tipo_m in _TIPOS_CENSURA_FRONT:
+            st.info("ℹ️ Tipo de Manutenção Preventiva/Preditiva/Censura → registro tratado como **dado censurado** (Falha = 0).")
+
         if st.button("➕ Adicionar à Lista", use_container_width=True):
+            # Preventiva/Preditiva/Censura → sempre censura (Falha = 0), independente do seletor
+            falha_efetivo = 0 if tipo_m in _TIPOS_CENSURA_FRONT else int(falha)
             n_evt    = len(st.session_state["manual_events"]) + 1
             tempo_ac = sum(e["TBF"] for e in st.session_state["manual_events"]) + tbf
             evento   = {
@@ -489,14 +495,14 @@ def _render_manual_entry(
                 "TTR":                     float(ttr),
                 "Horimetro_Inicio":        0.0,
                 "Horimetro_Evento":        tempo_ac,
-                "Falha":                   int(falha),
-                "Subcomponente":           sub   if falha == 1 else "—",
-                "Modo_Falha":              modo  if falha == 1 else "Censura (Em Operação)",
-                "Causa_Raiz":              causa if falha == 1 else "—",
-                "Mecanismo_Degradacao":    mec   if falha == 1 else "—",
+                "Falha":                   falha_efetivo,
+                "Subcomponente":           sub   if falha_efetivo == 1 else "—",
+                "Modo_Falha":              modo  if falha_efetivo == 1 else "Censura (Em Operação)",
+                "Causa_Raiz":              causa if falha_efetivo == 1 else "—",
+                "Mecanismo_Degradacao":    mec   if falha_efetivo == 1 else "—",
                 "Tipo_Manutencao":         tipo_m,
-                "Criticidade":             crit  if falha == 1 else "—",
-                "Boundary":                bound if falha == 1 else "—",
+                "Criticidade":             crit  if falha_efetivo == 1 else "—",
+                "Boundary":                bound if falha_efetivo == 1 else "—",
                 "Carga_Media_Pct":         float(carga),
                 "Temperatura_Media_C":     float(temp),
                 "Toneladas_Processadas":   float(tons),
@@ -504,7 +510,7 @@ def _render_manual_entry(
                 "Impacto_Producao_t":      0.0,
                 "Lucro_Cessante_BRL":      float(lucro),
                 "Tempo_Acumulado":         float(tempo_ac),
-                "Disponibilidade_Ciclo_Pct": round(tbf / (tbf + ttr + 1e-9) * 100, 1) if falha == 1 else 100.0,
+                "Disponibilidade_Ciclo_Pct": round(tbf / (tbf + ttr + 1e-9) * 100, 1) if falha_efetivo == 1 else 100.0,
             }
             st.session_state["manual_events"].append(evento)
             st.success(f"✅ Evento #{n_evt} adicionado. Total: {len(st.session_state['manual_events'])} eventos.")

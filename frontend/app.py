@@ -339,11 +339,13 @@ def main() -> None:
             _render_rich_tab(rich_df)
 
     # ── Exportação PDF ────────────────────────────────────────────────────────
-    _render_pdf_export(meta, fit, rul, ca or {}, audit or {}, ml or {})
+    prescriptive = st.session_state.get("_prescriptive_result", {})
+    _render_pdf_export(meta, fit, rul, ca or {}, audit or {}, ml or {}, prescriptive)
 
 
 def _render_pdf_export(
-    meta: dict, fit: dict, rul: dict, ca: dict, audit: dict, ml: dict
+    meta: dict, fit: dict, rul: dict, ca: dict, audit: dict, ml: dict,
+    prescriptive: dict = {},
 ) -> None:
     """Botão de download do relatório PDF — aparece no rodapé da página."""
     st.divider()
@@ -355,6 +357,7 @@ def _render_pdf_export(
                     pdf_bytes = api.generate_pdf(
                         meta=meta, fit=fit, rul=rul,
                         ca=ca, audit=audit, ml=ml,
+                        prescriptive=prescriptive,
                     )
                 tag      = meta.get("tag", "ativo").replace(" ", "_")
                 filename = f"APM_Relatorio_{tag}.pdf"
@@ -370,9 +373,11 @@ def _render_pdf_export(
             except Exception as e:
                 st.error(f"❌ Erro inesperado: {e}")
     with col_info:
+        has_presc = bool(prescriptive and prescriptive.get("acoes"))
+        presc_txt = " · Manutenção Prescritiva (plano de ações)" if has_presc else ""
         st.caption(
-            "O relatório PDF inclui: identificação do ativo, saúde e RUL com IC Bootstrap, "
-            "modelos paramétricos (ranking AICc), Crow-AMSAA, ML preditivo e auditoria estatística."
+            "Relatório inclui: identificação ISO 14224, saúde e RUL, modelos paramétricos, "
+            f"Crow-AMSAA, Score de Risco, ML preditivo, anomalias, auditoria estatística{presc_txt}."
         )
 
 

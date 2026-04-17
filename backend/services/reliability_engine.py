@@ -174,6 +174,9 @@ class ReliabilityEngine:
             for i in range(n_samples)
         ]
 
+    # Tipos de manutenção que representam intervenções PLANEJADAS — sempre censura
+    _TIPOS_CENSURA = {"Preventiva", "Preditiva", "Censura"}
+
     @staticmethod
     def process_real_data(
         df: pd.DataFrame, time_col: str, status_col: str
@@ -181,6 +184,12 @@ class ReliabilityEngine:
         dc = df.copy()
         dc["TBF"]   = dc[time_col].astype("float64")
         dc["Falha"] = dc[status_col].astype("int8")
+
+        # Manutenção preventiva/preditiva/censura → sempre censura (Falha = 0)
+        if "Tipo_Manutencao" in dc.columns:
+            mask_censura = dc["Tipo_Manutencao"].isin(ReliabilityEngine._TIPOS_CENSURA)
+            dc.loc[mask_censura, "Falha"] = 0
+
         dc = dc[dc["TBF"] > 0].reset_index(drop=True)
         dc["Tempo_Acumulado"] = dc["TBF"].cumsum()
         return [

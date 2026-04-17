@@ -259,11 +259,16 @@ def generate_pdf(
     ca: Dict,
     audit: Dict,
     ml: Dict,
+    prescriptive: Dict | None = None,
 ) -> bytes:
     """Solicita ao backend a geração do relatório PDF e retorna os bytes."""
     r = httpx.post(
         f"{BASE}/report/pdf",
-        json={"meta": meta, "fit": fit, "rul": rul, "ca": ca, "audit": audit, "ml": ml},
+        json={
+            "meta": meta, "fit": fit, "rul": rul,
+            "ca": ca, "audit": audit, "ml": ml,
+            "prescriptive": prescriptive or {},
+        },
         timeout=60.0,
     )
     if r.is_error:
