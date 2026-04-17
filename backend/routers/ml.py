@@ -48,6 +48,11 @@ def prescriptive(req: PrescriptiveRequest) -> Dict[str, Any]:
     Ferramentas: get_catalog_scenarios · compute_maintenance_window · classify_urgency.
     Fallback automático para Expert System se ANTHROPIC_API_KEY não estiver configurada.
     """
-    from backend.config.settings import EQUIPMENT_CATALOG
-    catalog = EQUIPMENT_CATALOG.get("equipment", [])
-    return prescriptive_service.run(req.model_dump(), catalog)
+    try:
+        from backend.config.settings import EQUIPMENT_CATALOG
+        catalog = EQUIPMENT_CATALOG.get("equipment", [])
+        return prescriptive_service.run(req.model_dump(), catalog)
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).error("Prescriptive endpoint error: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))

@@ -345,8 +345,9 @@ Responda sempre em português do Brasil. Seja técnico, preciso e acionável."""
 def run(req: Dict[str, Any], catalog: List[Dict]) -> Dict[str, Any]:
     """
     Executa o agente de Manutenção Prescritiva.
-    Com ANTHROPIC_API_KEY: Claude claude-opus-4-7 + tool_use.
+    Com ANTHROPIC_API_KEY: Claude claude-sonnet-4-6 + tool_use.
     Sem ANTHROPIC_API_KEY: Expert System baseado em regras ISO 14224.
+    Qualquer exceção cai no Expert System — nunca retorna 500.
     """
     api_key = os.getenv("ANTHROPIC_API_KEY")
 
@@ -360,7 +361,19 @@ def run(req: Dict[str, Any], catalog: List[Dict]) -> Dict[str, Any]:
         logger.error("Pacote 'anthropic' não instalado — usando Expert System")
         return _expert_system(req, catalog)
 
-    client = _anthropic.Anthropic(api_key=api_key)
+    try:
+        return _run_agent(req, catalog, _anthropic)
+    except Exception as exc:
+        logger.error("Erro no agente prescritivo: %s", exc, exc_info=True)
+        fallback = _expert_system(req, catalog)
+        fallback["raciocinio_agente"] = [f"[Erro no agente: {exc}]", "[Fallback: Expert System]"]
+        fallback["ia_disponivel"] = False
+        return fallback
+
+
+def _run_agent(req: Dict[str, Any], catalog: List[Dict], _anthropic: Any) -> Dict[str, Any]:
+    """Loop do agente Claude com tool_use."""
+    client = _anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
     user_msg = (
         f"Analise o estado atual do ativo e gere o plano prescritivo:\n\n"
@@ -380,9 +393,14 @@ def run(req: Dict[str, Any], catalog: List[Dict]) -> Dict[str, Any]:
     messages: List[Dict] = [{"role": "user", "content": user_msg}]
     steps:    List[str]  = []
 
+    urgency_map = {
+        "Crítica": "#DC2626", "Alta": "#F59E0B",
+        "Média": "#3B82F6",  "Baixa": "#10B981",
+    }
+
     for _ in range(7):
         response = client.messages.create(
-            model="claude-opus-4-7",
+            model="claude-sonnet-4-6",
             max_tokens=4096,
             system=_SYSTEM_PROMPT,
             tools=_TOOLS,
@@ -394,12 +412,7 @@ def run(req: Dict[str, Any], catalog: List[Dict]) -> Dict[str, Any]:
                 b.text for b in response.content if hasattr(b, "text")
             )
             result = _parse_response(final_text, steps)
-            # Enrich with urgency color if not present
             if "cor_urgencia" not in result:
-                urgency_map = {
-                    "Crítica": "#DC2626", "Alta": "#F59E0B",
-                    "Média": "#3B82F6",  "Baixa": "#10B981",
-                }
                 result["cor_urgencia"] = urgency_map.get(
                     result.get("nivel_urgencia", "Média"), "#3B82F6"
                 )
