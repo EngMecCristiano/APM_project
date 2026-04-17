@@ -486,16 +486,14 @@ def _plot_prescriptive_pareto(acoes: list) -> go.Figure:
         font=dict(color="#E2E8F0"),
         xaxis=dict(tickangle=-30, showgrid=False, tickfont=dict(size=10)),
         yaxis=dict(
-            title="Custo Relativo Acumulado",
+            title=dict(text="Custo Relativo Acumulado", font=dict(size=10)),
             gridcolor="#1E293B",
-            titlefont=dict(size=10),
         ),
         yaxis2=dict(
-            title="% Acumulada",
+            title=dict(text="% Acumulada", font=dict(size=10)),
             overlaying="y", side="right",
             range=[0, 115],
             showgrid=False,
-            titlefont=dict(size=10),
         ),
         legend=dict(orientation="h", y=1.14, x=0, font=dict(size=10)),
         margin=dict(t=70, b=70, l=50, r=60),
