@@ -35,13 +35,13 @@ MECANISMOS_DEGRADACAO = [
     "Vibração Excessiva", "Desequilíbrio",
 ]
 
-TIPOS_MANUTENCAO = [
+CAUSAS_PARADA = [
     "Corretiva", "Corretiva Emergencial",       # falha real → Falha = 1
     "Preventiva", "Preditiva",                  # intervenção planejada → Falha = 0
     "Parada Operacional",                        # processo parou → Falha = 0
     "Fim de Observação",                         # último registro do período → Falha = 0
     "Transferência",                             # equipamento relocado → Falha = 0
-    "Censura",                                   # censura genérica → Falha = 0
+    "Geral",                                     # censura genérica → Falha = 0
 ]
 CRITICIDADES     = ["Alta", "Média", "Baixa"]
 BOUNDARIES       = ["Interno", "Externo"]
@@ -458,7 +458,7 @@ def _render_manual_entry(
 
         c3, c4, c5 = st.columns(3)
         with c3:
-            tipo_m = st.selectbox("Tipo de Manutenção", TIPOS_MANUTENCAO, key="me_tipo")
+            tipo_m = st.selectbox("Causa da Parada", CAUSAS_PARADA, key="me_tipo")
         with c4:
             crit = st.selectbox("Criticidade", CRITICIDADES, key="me_crit")
         with c5:
@@ -484,7 +484,7 @@ def _render_manual_entry(
         _TIPOS_CENSURA_FRONT = {
             "Preventiva", "Preditiva",
             "Parada Operacional", "Fim de Observação", "Transferência",
-            "Censura",
+            "Geral",
         }
         if tipo_m in _TIPOS_CENSURA_FRONT:
             st.info(f"ℹ️ **{tipo_m}** → registro tratado como **dado censurado** (Falha = 0).")
@@ -511,7 +511,7 @@ def _render_manual_entry(
                 "Modo_Falha":              modo  if falha_efetivo == 1 else "Censura (Em Operação)",
                 "Causa_Raiz":              causa if falha_efetivo == 1 else "—",
                 "Mecanismo_Degradacao":    mec   if falha_efetivo == 1 else "—",
-                "Tipo_Manutencao":         tipo_m,
+                "Causa_Parada":            tipo_m,
                 "Criticidade":             crit  if falha_efetivo == 1 else "—",
                 "Boundary":                bound if falha_efetivo == 1 else "—",
                 "Carga_Media_Pct":         float(carga),
@@ -578,7 +578,7 @@ _RICH_COLS_ALL = [
     "Data_Inicio_Intervalo", "Data_Evento", "Data_Retorno_Operacao",
     "TBF", "TTR", "Horimetro_Inicio", "Horimetro_Evento", "Falha",
     "Subcomponente", "Modo_Falha", "Causa_Raiz", "Mecanismo_Degradacao",
-    "Tipo_Manutencao", "Criticidade", "Boundary",
+    "Causa_Parada", "Criticidade", "Boundary",
     "Carga_Media_Pct", "Temperatura_Media_C", "Toneladas_Processadas",
     "Custo_Reparo_BRL", "Impacto_Producao_t", "Lucro_Cessante_BRL",
     "Disponibilidade_Ciclo_Pct",
@@ -641,7 +641,7 @@ TBF_horas,status
 | 14 | `Modo_Falha` | texto | Ex: `Desgaste`, `Fratura`, `Vazamento` |
 | 15 | `Causa_Raiz` | texto | Ex: `Lubrificação Deficiente`, `Sobrecarga` |
 | 16 | `Mecanismo_Degradacao` | texto | Ex: `Fadiga`, `Corrosão`, `Erosão` |
-| 17 | `Tipo_Manutencao` | texto | `Corretiva` · `Corretiva Emergencial` · `Preventiva` · `Preditiva` · `Parada Operacional` · `Fim de Observação` · `Transferência` · `Censura` |
+| 17 | `Causa_Parada` | texto | `Corretiva` · `Corretiva Emergencial` · `Preventiva` · `Preditiva` · `Parada Operacional` · `Fim de Observação` · `Transferência` · `Geral` |
 | 18 | `Criticidade` | texto | `Alta` · `Média` · `Baixa` |
 | 19 | `Boundary` | texto | `Interno` · `Externo` |
 | 20 | `Carga_Media_Pct` | número | Carga operacional média em % |
@@ -652,8 +652,8 @@ TBF_horas,status
 | 25 | `Lucro_Cessante_BRL` | número | Receita não gerada pela parada em R$ |
 | 26 | `Disponibilidade_Ciclo_Pct` | número | Disponibilidade do ciclo em % |
 
-> **Regra de censura automática:** qualquer `Tipo_Manutencao` não-corretivo (`Preventiva`, `Preditiva`,
-> `Parada Operacional`, `Fim de Observação`, `Transferência`, `Censura`) força `Falha = 0` no CSV.
+> **Regra de censura automática:** qualquer `Causa_Parada` não-corretiva força `Falha = 0`.
+> Se a coluna estiver ausente, o sistema preenche automaticamente: `Falha=1 → Corretiva`, `Falha=0 → Geral`.
 """)
 
     file = st.file_uploader("Selecionar arquivo CSV", type=["csv"])

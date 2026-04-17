@@ -35,8 +35,8 @@ class FeatureEngineer:
     @staticmethod
     def extract(df: pd.DataFrame) -> pd.DataFrame:
         """
-        Features de janela móvel (MA, Std, Slope) + acumuladas + falha.
-        Captura degradação de curto prazo, volatilidade e memória histórica.
+        Features de janela móvel (MA, Std, Slope) + acumuladas + falha + modo de falha.
+        Captura degradação de curto prazo, volatilidade, memória histórica e padrão por modo.
         """
         out = df.copy().sort_values("Tempo_Acumulado").reset_index(drop=True)
 
@@ -57,6 +57,20 @@ class FeatureEngineer:
         out["TBF_Cummean"] = out["TBF"].expanding().mean()
         out["TBF_Cumstd"]  = out["TBF"].expanding().std()
 
+        # ── Features de Causa_Parada (só quando coluna presente e variada) ──────
+        if "Causa_Parada" in out.columns:
+            modos = out["Causa_Parada"].fillna("—")
+            # Label encoding: rank por frequência (modo mais comum = 0)
+            freq_rank = {m: i for i, m in enumerate(modos.value_counts().index)}
+            out["Causa_Code"] = modos.map(freq_rank).fillna(0).astype(float)
+            # Lag-1: causa da parada do evento anterior (sem data leakage)
+            out["Causa_Code_Lag1"] = out["Causa_Code"].shift(1).fillna(0)
+            # Risk encoding: média de TBF por modo usando apenas falhas reais
+            fail_mask = out["Falha"] == 1 if "Falha" in out.columns else pd.Series(True, index=out.index)
+            global_mean = out.loc[fail_mask, "TBF"].mean() if fail_mask.any() else out["TBF"].mean()
+            causa_tbf = out.loc[fail_mask].groupby("Causa_Parada")["TBF"].mean()
+            out["Causa_TBF_Risk"] = modos.map(causa_tbf).fillna(global_mean)
+
         return out.fillna(0)
 
 
@@ -75,7 +89,8 @@ class TBFPredictor:
     def _get_feature_cols(self, df_feat: pd.DataFrame) -> List[str]:
         return [
             c for c in df_feat.columns
-            if c.startswith(("TBF_MA", "TBF_Std", "TBF_Slope", "Falha_", "TBF_Cum"))
+            if c.startswith(("TBF_MA", "TBF_Std", "TBF_Slope", "Falha_", "TBF_Cum",
+                             "Causa_Code", "Causa_TBF"))
         ]
 
     def train(self, df: pd.DataFrame) -> MLMetrics:

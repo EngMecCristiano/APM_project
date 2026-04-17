@@ -72,7 +72,7 @@ class RichDataRecord(BaseModel):
     Modo_Falha:             str
     Causa_Raiz:             str
     Mecanismo_Degradacao:   str
-    Tipo_Manutencao:        str
+    Causa_Parada:           str
     Criticidade:            str
     Boundary:               str     # "Interno" | "Externo" | "—" (ISO 14224 boundary classification)
     # Contexto operacional
@@ -126,6 +126,7 @@ class DataRecord(BaseModel):
     TBF:              float
     Tempo_Acumulado:  float
     Falha:            int
+    Causa_Parada:     str = "Geral"
 
 
 # ─── Parâmetros da distribuição ajustada ──────────────────────────────────────
@@ -309,6 +310,7 @@ class MLAnalysisResult(BaseModel):
     forecast:           ForecastResult
     feature_importance: Optional[FeatureImportance]
     risk:               RiskResult
+    warnings:           List[str] = []
 
 
 # ─── PMO ──────────────────────────────────────────────────────────────────────

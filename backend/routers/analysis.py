@@ -49,12 +49,12 @@ def get_equipment_catalog() -> List[EquipmentSummary]:
 _ISO14224_REQUIRED = {"TBF", "Falha"}
 _ISO14224_RECOMMENDED = {
     "Subcomponente", "Modo_Falha", "Causa_Raiz", "Mecanismo_Degradacao",
-    "Tipo_Manutencao", "Criticidade", "Boundary", "TTR",
+    "Causa_Parada", "Criticidade", "Boundary", "TTR",
     "Data_Evento", "Data_Retorno_Operacao",
 }
 _CRITICIDADE_VALID = {"Alta", "Média", "Baixa", "—"}
 _BOUNDARY_VALID    = {"Interno", "Externo", "—"}
-_TIPO_MANUT_VALID  = {
+_CAUSA_PARADA_VALID  = {
     "Corretiva", "Corretiva Emergencial",
     "Preventiva", "Preditiva",
     "Parada Operacional", "Fim de Observação", "Transferência",
@@ -69,7 +69,7 @@ async def validate_iso14224(file: UploadFile = File(...)) -> ISO14224ValidationR
     Verifica se o CSV uploaded segue a estrutura ISO 14224:
     - Campos obrigatórios presentes (TBF, Falha)
     - Campos recomendados presentes
-    - Valores válidos (Criticidade, Boundary, Tipo_Manutencao)
+    - Valores válidos (Criticidade, Boundary, Causa_Parada)
     - TBF > 0, Falha ∈ {0, 1}, TTR ≥ 0
     Retorna score de conformidade 0–100 e lista de issues.
     """
@@ -146,12 +146,12 @@ async def validate_iso14224(file: UploadFile = File(...)) -> ISO14224ValidationR
                            f"Esperado: {sorted(_BOUNDARY_VALID)}.",
             ))
 
-    if "Tipo_Manutencao" in cols:
-        invalidos = df["Tipo_Manutencao"].dropna()
-        invalidos = invalidos[~invalidos.isin(_TIPO_MANUT_VALID)]
+    if "Causa_Parada" in cols:
+        invalidos = df["Causa_Parada"].dropna()
+        invalidos = invalidos[~invalidos.isin(_CAUSA_PARADA_VALID)]
         if not invalidos.empty:
             issues.append(ISO14224Issue(
-                campo="Tipo_Manutencao", severidade="aviso",
+                campo="Causa_Parada", severidade="aviso",
                 descricao=f"Valores não padronizados: {invalidos.unique().tolist()[:5]}.",
             ))
 
@@ -244,8 +244,14 @@ async def upload_csv(
 
     if time_col not in df.columns or status_col not in df.columns:
         raise HTTPException(status_code=422, detail=f"Colunas '{time_col}' ou '{status_col}' não encontradas.")
-    if len(df) < 100:
-        raise HTTPException(status_code=422, detail=f"Dados insuficientes: {len(df)} registros (mínimo 100).")
+    if len(df) < 3:
+        raise HTTPException(status_code=422, detail=f"Dados insuficientes: {len(df)} registros (mínimo 3).")
+
+    # Popula Causa_Parada com padrão quando ausente: Falha=1 → Corretiva, Falha=0 → Geral
+    if "Causa_Parada" not in df.columns and "Tipo_Manutencao" not in df.columns:
+        df["Causa_Parada"] = df[status_col].apply(
+            lambda x: "Corretiva" if pd.notna(x) and int(x) == 1 else "Geral"
+        )
 
     return engine.process_real_data(df, time_col, status_col)
 
@@ -256,7 +262,7 @@ async def upload_csv_rich(file: UploadFile = File(...)) -> List[RichDataRecord]:
     """
     Importa CSV com o esquema completo ISO 14224.
     Colunas obrigatórias: TBF, Falha.
-    Aplica regra de censura: qualquer Tipo_Manutencao não-corretivo → Falha = 0.
+    Aplica regra de censura: qualquer Causa_Parada não-corretivo → Falha = 0.
     """
     _TIPOS_CENSURA = {
         "Preventiva", "Preditiva",
@@ -267,7 +273,7 @@ async def upload_csv_rich(file: UploadFile = File(...)) -> List[RichDataRecord]:
         "OS_Numero": "—", "Tag_Ativo": "EQP-01", "Tipo_Equipamento": "Genérico",
         "Data_Inicio_Intervalo": "", "Data_Evento": "", "Data_Retorno_Operacao": "",
         "Subcomponente": "—", "Modo_Falha": "—", "Causa_Raiz": "—",
-        "Mecanismo_Degradacao": "—", "Tipo_Manutencao": "Corretiva",
+        "Mecanismo_Degradacao": "—", "Causa_Parada": "Corretiva",
         "Criticidade": "—", "Boundary": "—",
     }
     _NUM_DEFAULTS = {
@@ -291,9 +297,9 @@ async def upload_csv_rich(file: UploadFile = File(...)) -> List[RichDataRecord]:
     df["Falha"] = pd.to_numeric(df["Falha"], errors="coerce").astype("Int64")
     df = df[df["TBF"] > 0].reset_index(drop=True)
 
-    # Regra de censura por Tipo_Manutencao
-    if "Tipo_Manutencao" in df.columns:
-        mask = df["Tipo_Manutencao"].isin(_TIPOS_CENSURA)
+    # Regra de censura por Causa_Parada
+    if "Causa_Parada" in df.columns:
+        mask = df["Causa_Parada"].isin(_TIPOS_CENSURA)
         df.loc[mask, "Falha"] = 0
 
     df["Tempo_Acumulado"] = df["TBF"].cumsum()
@@ -305,6 +311,13 @@ async def upload_csv_rich(file: UploadFile = File(...)) -> List[RichDataRecord]:
     for col, val in _NUM_DEFAULTS.items():
         if col not in df.columns:
             df[col] = val
+
+    # Causa_Parada ausente → derivar de Falha: 1=Corretiva, 0=Geral
+    if "Causa_Parada" not in df.columns or (df["Causa_Parada"] == "Corretiva").all():
+        if "Causa_Parada" not in df.columns:
+            df["Causa_Parada"] = df["Falha"].apply(
+                lambda x: "Corretiva" if pd.notna(x) and int(x) == 1 else "Geral"
+            )
 
     if "Num_Evento" in df.columns and (df["Num_Evento"] == 0).all():
         df["Num_Evento"] = range(1, len(df) + 1)
@@ -333,7 +346,7 @@ async def upload_csv_rich(file: UploadFile = File(...)) -> List[RichDataRecord]:
             Modo_Falha=str(row["Modo_Falha"]),
             Causa_Raiz=str(row["Causa_Raiz"]),
             Mecanismo_Degradacao=str(row["Mecanismo_Degradacao"]),
-            Tipo_Manutencao=str(row["Tipo_Manutencao"]),
+            Causa_Parada=str(row["Causa_Parada"]),
             Criticidade=str(row["Criticidade"]),
             Boundary=str(row["Boundary"]),
             Carga_Media_Pct=float(row["Carga_Media_Pct"]),

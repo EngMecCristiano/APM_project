@@ -916,7 +916,7 @@ Instalação
 | `Subcomponente` | Parte que falhou | "Manto côncavo superior" |
 | `TTR` | Time To Repair em horas | 14.5 h |
 | `Criticidade` | Alta / Média / Baixa | "Alta" |
-| `Tipo_Manutencao` | Corretiva / Preventiva / Preditiva | "Corretiva de emergência" |
+| `Causa_Parada` | Corretiva / Preventiva / Preditiva / Parada Operacional / Geral | "Corretiva" |
 | `Custo_Reparo_BRL` | Custo do evento (R$) | R$ 87.400 |
 | `Impacto_Producao_t` | Produção perdida (toneladas) | 3.200 t |
 | `Lucro_Cessante_BRL` | Impacto financeiro da produção perdida | R$ 38.400 |

@@ -178,7 +178,7 @@ class ReliabilityEngine:
     _TIPOS_CENSURA = {
         "Preventiva", "Preditiva",
         "Parada Operacional", "Fim de Observação", "Transferência",
-        "Censura",
+        "Geral", "Censura",  # Censura mantido para compatibilidade com datasets antigos
     }
 
     @staticmethod
@@ -189,15 +189,29 @@ class ReliabilityEngine:
         dc["TBF"]   = dc[time_col].astype("float64")
         dc["Falha"] = dc[status_col].astype("int8")
 
-        # Manutenção preventiva/preditiva/censura → sempre censura (Falha = 0)
-        if "Tipo_Manutencao" in dc.columns:
-            mask_censura = dc["Tipo_Manutencao"].isin(ReliabilityEngine._TIPOS_CENSURA)
+        # Causa_Parada não-corretiva → sempre censura (Falha = 0)
+        if "Causa_Parada" in dc.columns:
+            mask_censura = dc["Causa_Parada"].isin(ReliabilityEngine._TIPOS_CENSURA)
+            dc.loc[mask_censura, "Falha"] = 0
+        elif "Tipo_Manutencao" in dc.columns:  # compatibilidade com datasets antigos
+            dc = dc.rename(columns={"Tipo_Manutencao": "Causa_Parada"})
+            mask_censura = dc["Causa_Parada"].isin(ReliabilityEngine._TIPOS_CENSURA)
             dc.loc[mask_censura, "Falha"] = 0
 
         dc = dc[dc["TBF"] > 0].reset_index(drop=True)
         dc["Tempo_Acumulado"] = dc["TBF"].cumsum()
+
+        # Popula Causa_Parada com padrão quando ausente
+        if "Causa_Parada" not in dc.columns:
+            dc["Causa_Parada"] = dc["Falha"].apply(lambda x: "Corretiva" if x == 1 else "Geral")
+
         return [
-            DataRecord(TBF=r.TBF, Tempo_Acumulado=r.Tempo_Acumulado, Falha=r.Falha)
+            DataRecord(
+                TBF=r.TBF,
+                Tempo_Acumulado=r.Tempo_Acumulado,
+                Falha=r.Falha,
+                Causa_Parada=str(getattr(r, "Causa_Parada", "Geral") or "Geral"),
+            )
             for r in dc.itertuples()
         ]
 

@@ -82,7 +82,7 @@ def _render_rich_tab(df: pd.DataFrame) -> None:
         crit_opts = ["Todos", "Alta", "Média", "Baixa"]
         crit_sel = st.selectbox("Criticidade", crit_opts)
     with col_f3:
-        tipo_opts = ["Todos"] + sorted(df["Tipo_Manutencao"].unique().tolist())
+        tipo_opts = ["Todos"] + sorted(df["Causa_Parada"].unique().tolist())
         tipo_sel = st.selectbox("Tipo de Manutenção", tipo_opts)
 
     df_view = df.copy()
@@ -91,7 +91,7 @@ def _render_rich_tab(df: pd.DataFrame) -> None:
     if crit_sel != "Todos":
         df_view = df_view[df_view["Criticidade"] == crit_sel]
     if tipo_sel != "Todos":
-        df_view = df_view[df_view["Tipo_Manutencao"] == tipo_sel]
+        df_view = df_view[df_view["Causa_Parada"] == tipo_sel]
 
     st.caption(f"Exibindo {len(df_view)} de {len(df)} registros")
     html_table(df_view, max_rows=300)

@@ -11,7 +11,7 @@ Colunas geradas (26):
   Temporal        : Data_Inicio_Intervalo, Data_Evento, Data_Retorno_Operacao
   Confiabilidade  : TBF, TTR, Horimetro_Inicio, Horimetro_Evento, Falha
   Taxonomia       : Subcomponente, Modo_Falha, Causa_Raiz,
-                    Mecanismo_Degradacao, Tipo_Manutencao, Criticidade, Boundary
+                    Mecanismo_Degradacao, Causa_Parada, Criticidade, Boundary
   Operacional     : Carga_Media_Pct, Temperatura_Media_C, Toneladas_Processadas
   Financeiro      : Custo_Reparo_BRL, Impacto_Producao_t, Lucro_Cessante_BRL
   Acumulado       : Tempo_Acumulado, Disponibilidade_Ciclo_Pct
@@ -284,7 +284,7 @@ class RichSyntheticGenerator:
                 "Modo_Falha":              sc["modo_falha"]    if falha[i] == 1 else "Censura (Em Operação)",
                 "Causa_Raiz":              sc["causa_raiz"]    if falha[i] == 1 else "—",
                 "Mecanismo_Degradacao":    sc["mecanismo"]     if falha[i] == 1 else "—",
-                "Tipo_Manutencao":         tipo_manut[i],
+                "Causa_Parada":            tipo_manut[i],
                 "Criticidade":             sc["criticidade"]   if falha[i] == 1 else "—",
                 "Boundary":                boundary,
                 # Contexto operacional
