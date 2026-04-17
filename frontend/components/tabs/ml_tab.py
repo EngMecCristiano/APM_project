@@ -531,12 +531,17 @@ e sintetiza tudo em um **plano de ação priorizado com justificativas técnicas
         st.info("Prescrição gerada pelo **Expert System** (ANTHROPIC_API_KEY não configurada)", icon="⚙️")
 
     # Sumário executivo com badge de urgência
+    janela_html = ""
+    if janela != "—":
+        hs_str = f" — {hs:.0f}h" if hs else ""
+        janela_html = f'<br/><span style="color:#94A3B8;font-size:13px;">Janela: {janela}{hs_str}</span>'
+    sumario = result.get("sumario_executivo", "")
     st.markdown(
         f'<div style="background:{cor}22;border-left:5px solid {cor};'
         f'padding:14px 18px;border-radius:6px;margin:12px 0;">'
         f'<span style="font-size:18px;font-weight:700;color:{cor};">{nivel}</span>'
-        f'<br/><span style="color:#E2E8F0;font-size:14px;">{result.get("sumario_executivo","")}</span>'
-        f'{"<br/><span style=\\"color:#94A3B8;font-size:13px;\\">Janela: " + janela + (" — " + f"{hs:.0f}h" if hs else "") + "</span>" if janela != "—" else ""}'
+        f'<br/><span style="color:#E2E8F0;font-size:14px;">{sumario}</span>'
+        f'{janela_html}'
         f'</div>',
         unsafe_allow_html=True,
     )
