@@ -398,20 +398,26 @@ def _run_agent(req: Dict[str, Any], catalog: List[Dict], _anthropic: Any) -> Dic
         "Média": "#3B82F6",  "Baixa": "#10B981",
     }
 
-    for _ in range(7):
+    last_text = ""
+
+    for _ in range(12):
         response = client.messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=4096,
+            max_tokens=8096,
             system=_SYSTEM_PROMPT,
             tools=_TOOLS,
             messages=messages,
         )
 
-        if response.stop_reason == "end_turn":
+        logger.info("Agente stop_reason: %s", response.stop_reason)
+
+        # Extrai texto de qualquer resposta (end_turn ou max_tokens)
+        if response.stop_reason in ("end_turn", "max_tokens"):
             final_text = "".join(
                 b.text for b in response.content if hasattr(b, "text")
             )
-            result = _parse_response(final_text, steps)
+            last_text = final_text or last_text
+            result = _parse_response(last_text, steps)
             if "cor_urgencia" not in result:
                 result["cor_urgencia"] = urgency_map.get(
                     result.get("nivel_urgencia", "Média"), "#3B82F6"
@@ -421,6 +427,8 @@ def _run_agent(req: Dict[str, Any], catalog: List[Dict], _anthropic: Any) -> Dic
         if response.stop_reason == "tool_use":
             tool_results = []
             for block in response.content:
+                if hasattr(block, "text") and block.text:
+                    last_text = block.text
                 if block.type == "tool_use":
                     logger.info("Agente → ferramenta: %s", block.name)
                     steps.append(
@@ -435,6 +443,17 @@ def _run_agent(req: Dict[str, Any], catalog: List[Dict], _anthropic: Any) -> Dic
             messages.append({"role": "assistant", "content": response.content})
             messages.append({"role": "user",      "content": tool_results})
         else:
+            # stop_reason desconhecido — tenta extrair texto e retorna
+            final_text = "".join(b.text for b in response.content if hasattr(b, "text"))
+            last_text = final_text or last_text
+            logger.warning("Stop reason inesperado '%s' — tentando parsear texto", response.stop_reason)
+            if last_text.strip():
+                result = _parse_response(last_text, steps)
+                if "cor_urgencia" not in result:
+                    result["cor_urgencia"] = urgency_map.get(
+                        result.get("nivel_urgencia", "Média"), "#3B82F6"
+                    )
+                return result
             break
 
     logger.warning("Loop do agente encerrado sem resposta final — usando Expert System")
