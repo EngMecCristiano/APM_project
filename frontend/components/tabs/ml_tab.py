@@ -224,22 +224,44 @@ Se o equipamento for muito estável, pode haver falsos positivos.
         )
         import numpy as np
         mean_tbf = float(np.mean(tbf_series))
+
+        _CORRETIVAS = {"Corretiva", "Corretiva Emergencial"}
+        _CAUSA_LABEL = {
+            "Preventiva":        "— Intervenção Preventiva",
+            "Preditiva":         "— Intervenção Preditiva",
+            "Parada Operacional":"— Parada Operacional",
+            "Fim de Observação": "— Fim de Observação",
+            "Transferência":     "— Transferência",
+            "Geral":             "— Censura Geral",
+            "Censura":           "— Censura",
+        }
+
         rows = []
         for idx, val in zip(anomalies["indices"], anomalies["values"]):
+            rec   = records[idx] if idx < len(records) else {}
+            causa = rec.get("Causa_Parada", "—")
+            falha = rec.get("Falha", 1)
+
+            if causa in _CORRETIVAS or (causa == "—" and falha == 1):
+                label = "↘ Falha Precoce" if val < mean_tbf * 0.6 else "↗ Falha Tardia"
+            elif causa in _CAUSA_LABEL:
+                label = _CAUSA_LABEL[causa]
+            else:
+                label = "↘ TBF Curto" if val < mean_tbf * 0.6 else "↗ TBF Longo"
+
             rows.append({
-                "Ciclo": idx,
+                "Ciclo": idx + 1,
                 "TBF Anômalo (h)": f"{val:.0f}",
+                "Causa da Parada": causa if causa != "—" else "—",
                 "Desvio da Média (%)": f"{nbr((val - mean_tbf) / mean_tbf * 100, 1)}%",
-                "Classificação": (
-                    "↘ TBF Curto (falha precoce)" if val < mean_tbf * 0.6
-                    else "↗ TBF Longo (possível censura)"
-                ),
+                "Classificação": label,
             })
         html_table(pd.DataFrame(rows))
         st.markdown("""
-**Causas típicas em mineração:**
-- **TBF curto**: mortalidade infantil, erro de montagem, sobrecarga pontual
-- **TBF longo**: possível censura não registrada ou manutenção de oportunidade
+**Legenda de classificação:**
+- **Falha Precoce / Tardia**: evento corretivo fora do padrão histórico
+- **Intervenção Preventiva/Preditiva**: parada planejada com TBF atípico
+- **Parada Operacional**: parada de processo — não indica degradação do ativo
         """)
     else:
         st.success("✅ Nenhuma anomalia detectada no histórico de TBF.")
