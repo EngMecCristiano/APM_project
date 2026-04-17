@@ -154,6 +154,15 @@ def upload_csv(file_bytes: bytes, filename: str, time_col: str, status_col: str)
     )
 
 
+def upload_csv_rich(file_bytes: bytes, filename: str) -> List[Dict]:
+    """Importa CSV ISO 14224 Completo (26 colunas). Retorna List[RichDataRecord]."""
+    files = {"file": (filename, file_bytes, "text/csv")}
+    r = httpx.post(f"{BASE}/analysis/upload-csv-rich", files=files, timeout=TIMEOUT)
+    if r.is_error:
+        _raise(r, "/analysis/upload-csv-rich")
+    return r.json()
+
+
 def fit_models(records: List[Dict]) -> Dict:
     return _post("/analysis/fit", records)
 

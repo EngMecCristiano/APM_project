@@ -561,60 +561,89 @@ def _render_manual_entry(
 
 # ─── Upload CSV ───────────────────────────────────────────────────────────────
 
+_RICH_COLS_REQUIRED = {"TBF", "Falha"}
+_RICH_COLS_ALL = [
+    "OS_Numero", "Tag_Ativo", "Tipo_Equipamento", "Num_Evento",
+    "Data_Inicio_Intervalo", "Data_Evento", "Data_Retorno_Operacao",
+    "TBF", "TTR", "Horimetro_Inicio", "Horimetro_Evento", "Falha",
+    "Subcomponente", "Modo_Falha", "Causa_Raiz", "Mecanismo_Degradacao",
+    "Tipo_Manutencao", "Criticidade", "Boundary",
+    "Carga_Media_Pct", "Temperatura_Media_C", "Toneladas_Processadas",
+    "Custo_Reparo_BRL", "Impacto_Producao_t", "Lucro_Cessante_BRL",
+    "Disponibilidade_Ciclo_Pct",
+]
+
+
 def _render_upload(
     meta: Dict[str, Any]
 ) -> Tuple[Optional[Dict], Optional[List[Dict]], bool, None]:
 
-    with st.expander("📋 Guia de Importação — Dados para Análise Prescritiva", expanded=False):
-        st.markdown("""
-### Formato Mínimo — Análise de Confiabilidade
+    fmt = st.radio(
+        "Formato do CSV",
+        ["Mínimo (TBF + Status)", "ISO 14224 Completo (26 colunas)"],
+        horizontal=True,
+        help="Mínimo: apenas tempo e status de falha. Completo: todas as colunas ISO 14224 — habilita aba Dataset e Manutenção Prescritiva enriquecida.",
+    )
 
-| Coluna | Descrição | Exemplo |
+    if fmt == "Mínimo (TBF + Status)":
+        with st.expander("📋 Como montar o CSV Mínimo", expanded=False):
+            st.markdown("""
+**Requisitos:** ≥ 100 registros · separador `,` ou `;` · sem linhas completamente vazias.
+
+| Coluna | Tipo | Descrição |
 |---|---|---|
-| **Tempo (TBF)** | Tempo Entre Falhas em horas | `850.5` |
-| **Status** | `1` = falha confirmada · `0` = censura | `1` |
+| **TBF** (qualquer nome) | número | Tempo Entre Falhas em horas — ex: `850.5` |
+| **Status** (qualquer nome) | inteiro | `1` = falha confirmada · `0` = censura (em operação) |
 
-**Requisitos mínimos:** ≥ 100 registros, separador `,` ou `;`, sem linhas vazias.
-
-```
+```csv
 TBF_horas,status
 1200,1
 850,1
 1100,0
 950,1
+720,1
 ```
 
----
+> Você escolhe o nome das colunas na tela — o sistema faz o mapeamento automático.
+> **Manutenção Preventiva** no campo de status deve ser `0` (dado censurado, não é falha).
+""")
+    else:
+        with st.expander("📋 Como montar o CSV ISO 14224 Completo", expanded=False):
+            st.markdown(f"""
+**Colunas obrigatórias:** `TBF`, `Falha` — as demais são opcionais e preenchidas com padrão se ausentes.
 
-### Formato Estendido — Recomendado para Manutenção Prescritiva com IA
+| # | Coluna | Tipo | Descrição |
+|---|---|---|---|
+| 1 | `OS_Numero` | texto | Número da Ordem de Serviço — ex: `OS-2024-0001` |
+| 2 | `Tag_Ativo` | texto | Identificação do ativo — ex: `BBA-101A` |
+| 3 | `Tipo_Equipamento` | texto | Classe ISO 14224 — ex: `Centrifugal Pump` |
+| 4 | `Num_Evento` | inteiro | Sequência do evento |
+| 5 | `Data_Inicio_Intervalo` | data | Início do intervalo de operação — ex: `2023-01-15` |
+| 6 | `Data_Evento` | data | Data da falha ou intervenção |
+| 7 | `Data_Retorno_Operacao` | data | Data de retorno (vazio para censuras) |
+| 8 | `TBF` ⚠️ | número | **Obrigatório** — Tempo Entre Falhas em horas |
+| 9 | `TTR` | número | Tempo para Reparo em horas |
+| 10 | `Horimetro_Inicio` | número | Horímetro no início do intervalo |
+| 11 | `Horimetro_Evento` | número | Horímetro no momento do evento |
+| 12 | `Falha` ⚠️ | inteiro | **Obrigatório** — `1` = falha · `0` = censura |
+| 13 | `Subcomponente` | texto | Ex: `Rolamento`, `Selo Mecânico` |
+| 14 | `Modo_Falha` | texto | Ex: `Desgaste`, `Fratura`, `Vazamento` |
+| 15 | `Causa_Raiz` | texto | Ex: `Lubrificação Deficiente`, `Sobrecarga` |
+| 16 | `Mecanismo_Degradacao` | texto | Ex: `Fadiga`, `Corrosão`, `Erosão` |
+| 17 | `Tipo_Manutencao` | texto | `Corretiva` · `Preventiva` · `Preditiva` · `Censura` |
+| 18 | `Criticidade` | texto | `Alta` · `Média` · `Baixa` |
+| 19 | `Boundary` | texto | `Interno` · `Externo` |
+| 20 | `Carga_Media_Pct` | número | Carga operacional média em % |
+| 21 | `Temperatura_Media_C` | número | Temperatura média em °C |
+| 22 | `Toneladas_Processadas` | número | Volume processado no intervalo |
+| 23 | `Custo_Reparo_BRL` | número | Custo de mão-de-obra + peças em R$ |
+| 24 | `Impacto_Producao_t` | número | Toneladas perdidas pela parada |
+| 25 | `Lucro_Cessante_BRL` | número | Receita não gerada pela parada em R$ |
+| 26 | `Disponibilidade_Ciclo_Pct` | número | Disponibilidade do ciclo em % |
 
-Quanto mais campos você fornecer, mais preciso será o diagnóstico do agente:
-
-| Coluna adicional | O que habilita no agente |
-|---|---|
-| `Subcomponente` | Identifica qual parte do equipamento falha mais |
-| `Modo_Falha` | Gráfico de Pareto de modos + priorização de ações |
-| `Causa_Raiz` | Elimina causas recorrentes no plano prescritivo |
-| `Criticidade` | Pondera urgência das intervenções |
-| `Custo_Reparo_BRL` | Calcula ROI da manutenção preventiva |
-| `TTR` | Estima indisponibilidade e disponibilidade esperada |
-
-> **Dica:** Use o modo **Entrada Manual (ISO 14224)** para inserir esses campos
-> diretamente no sistema e salvá-los no banco de dados por TAG.
-
----
-
-### Passo a Passo — Manutenção Prescritiva com IA
-
-1. Selecione o equipamento correto no catálogo (sidebar)
-2. Importe o CSV com os dados históricos de falha
-3. Clique em **▶ Processar Dados Reais**
-4. Aguarde a análise de confiabilidade e ML
-5. Acesse a aba **Machine Learning** → sub-aba **🤖 Manutenção Prescritiva**
-6. Clique **Gerar Prescrição com IA**
-7. O agente consulta: risco ML · RUL · catálogo ISO 14224 · histórico de falhas
-8. Receba o plano de ação com prioridades e janelas de intervenção
-        """)
+> **Regra de censura automática:** se `Tipo_Manutencao` for `Preventiva`, `Preditiva` ou `Censura`,
+> o campo `Falha` é forçado para `0` independente do valor no CSV.
+""")
 
     file = st.file_uploader("Selecionar arquivo CSV", type=["csv"])
     if file is None:
@@ -622,29 +651,7 @@ Quanto mais campos você fornecer, mais preciso será o diagnóstico do agente:
 
     file_bytes = file.read()
 
-    # ── Validação ISO 14224 opcional ─────────────────────────────────────────
-    if st.checkbox("Validar conformidade ISO 14224", value=False,
-                   help="Verifica se o CSV segue a estrutura ISO 14224:2016 e exibe score de conformidade."):
-        with st.spinner("Validando conformidade ISO 14224..."):
-            try:
-                val = api.validate_iso14224(file_bytes, file.name)
-                score = val.get("score_conformidade", 0)
-                color = "green" if score >= 80 else "orange" if score >= 50 else "red"
-                st.markdown(
-                    f"**Score ISO 14224:** :{color}[{score:.0f}/100] — "
-                    + ("✅ Conforme" if val.get("conforme") else "⚠️ Não conforme")
-                )
-                st.caption(val.get("resumo", ""))
-                issues = val.get("issues", [])
-                if issues:
-                    with st.expander(f"Ver {len(issues)} issue(s) encontrada(s)"):
-                        for iss in issues:
-                            icon = "🔴" if iss["severidade"] == "erro" else "🟡"
-                            loc  = f" (linha {iss['linha']})" if iss.get("linha") else ""
-                            st.markdown(f"{icon} **{iss['campo']}**{loc}: {iss['descricao']}")
-            except Exception as e:
-                st.warning(f"Não foi possível validar ISO 14224: {e}")
-
+    # ── Leitura de colunas ────────────────────────────────────────────────────
     try:
         with st.spinner("Lendo colunas..."):
             info = api.get_csv_columns(file_bytes, file.name)
@@ -656,37 +663,114 @@ Quanto mais campos você fornecer, mais preciso será o diagnóstico do agente:
     n_rows = info.get("n_rows", 0)
     st.caption(f"Arquivo: {n_rows} linhas × {len(cols)} colunas detectadas")
 
-    if n_rows < 100:
-        st.error(f"❌ Arquivo com apenas {n_rows} registros. Mínimo necessário: 100.")
+    if n_rows < 3:
+        st.error(f"❌ Arquivo com apenas {n_rows} registros. Mínimo necessário: 3.")
         return meta, None, False, None
 
-    if len(cols) < 2:
-        st.error("❌ O arquivo precisa ter pelo menos 2 colunas: Tempo (TBF) e Status.")
-        return meta, None, False, None
+    # ── MODO MÍNIMO ───────────────────────────────────────────────────────────
+    if fmt == "Mínimo (TBF + Status)":
+        if n_rows < 100:
+            st.warning(f"⚠️ Apenas {n_rows} registros — mínimo recomendado é 100 para análise robusta.")
 
-    st.info("✅ Arquivo válido. Mapeie as colunas abaixo:")
-    t_col = st.selectbox("Coluna de Tempo (TBF — horas)", cols,
-                         help="Selecione a coluna que contém o tempo entre falhas em horas")
-    s_col = st.selectbox("Coluna de Status (Falha=1 / Censura=0)", cols,
-                         help="Selecione a coluna com 1 para falha confirmada e 0 para equipamento ainda operando")
-
-    if t_col == s_col:
-        st.warning("⚠️ As colunas de Tempo e Status não podem ser a mesma.")
-        return meta, None, False, None
-
-    _render_thresholds()
-
-    if st.button("▶ Processar Dados Reais", type="primary", use_container_width=True):
-        try:
-            with st.spinner("Processando CSV..."):
-                records = api.upload_csv(file_bytes, file.name, t_col, s_col)
-            if not records:
-                st.error("❌ Nenhum registro válido encontrado.")
-                return meta, None, False, None
-            st.success(f"✅ {len(records)} registros processados com sucesso.")
-            return meta, records, True, None
-        except Exception as e:
-            st.error(f"❌ Erro ao processar: {str(e)}")
+        if len(cols) < 2:
+            st.error("❌ O arquivo precisa ter pelo menos 2 colunas: Tempo e Status.")
             return meta, None, False, None
+
+        st.info("✅ Arquivo válido. Mapeie as colunas abaixo:")
+        t_col = st.selectbox("Coluna de Tempo (TBF — horas)", cols,
+                             help="Coluna com o tempo entre falhas em horas")
+        s_col = st.selectbox("Coluna de Status (Falha=1 / Censura=0)", cols,
+                             help="1 = falha confirmada · 0 = equipamento em operação (censura)")
+
+        if t_col == s_col:
+            st.warning("⚠️ As colunas de Tempo e Status não podem ser a mesma.")
+            return meta, None, False, None
+
+        _render_thresholds()
+
+        if st.button("▶ Processar Dados Reais", type="primary", use_container_width=True):
+            try:
+                with st.spinner("Processando CSV..."):
+                    records = api.upload_csv(file_bytes, file.name, t_col, s_col)
+                if not records:
+                    st.error("❌ Nenhum registro válido encontrado.")
+                    return meta, None, False, None
+                st.success(f"✅ {len(records)} registros processados com sucesso.")
+                return meta, records, True, None
+            except Exception as e:
+                st.error(f"❌ Erro ao processar: {str(e)}")
+                return meta, None, False, None
+
+    # ── MODO ISO 14224 COMPLETO ───────────────────────────────────────────────
+    else:
+        cols_set = set(cols)
+        missing_required = _RICH_COLS_REQUIRED - cols_set
+        if missing_required:
+            st.error(f"❌ Colunas obrigatórias ausentes: {', '.join(sorted(missing_required))}")
+            return meta, None, False, None
+
+        cols_present = [c for c in _RICH_COLS_ALL if c in cols_set]
+        cols_absent  = [c for c in _RICH_COLS_ALL if c not in cols_set]
+
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.success(f"✅ {len(cols_present)}/26 colunas ISO 14224 detectadas")
+        with col_b:
+            if cols_absent:
+                st.info(f"ℹ️ {len(cols_absent)} colunas ausentes — preenchidas com padrão")
+
+        if cols_absent:
+            with st.expander(f"Ver {len(cols_absent)} coluna(s) que serão preenchidas com padrão"):
+                st.caption(" · ".join(cols_absent))
+
+        # Validação ISO 14224 opcional
+        if st.checkbox("Validar conformidade ISO 14224", value=True,
+                       help="Verifica score de conformidade e lista problemas no CSV."):
+            with st.spinner("Validando conformidade ISO 14224..."):
+                try:
+                    val = api.validate_iso14224(file_bytes, file.name)
+                    score = val.get("score_conformidade", 0)
+                    color = "green" if score >= 80 else "orange" if score >= 50 else "red"
+                    st.markdown(
+                        f"**Score ISO 14224:** :{color}[{score:.0f}/100] — "
+                        + ("✅ Conforme" if val.get("conforme") else "⚠️ Não conforme")
+                    )
+                    st.caption(val.get("resumo", ""))
+                    issues = val.get("issues", [])
+                    if issues:
+                        with st.expander(f"Ver {len(issues)} issue(s) encontrada(s)"):
+                            for iss in issues:
+                                icon = "🔴" if iss["severidade"] == "erro" else "🟡"
+                                loc  = f" (linha {iss['linha']})" if iss.get("linha") else ""
+                                st.markdown(f"{icon} **{iss['campo']}**{loc}: {iss['descricao']}")
+                except Exception as e:
+                    st.warning(f"Não foi possível validar ISO 14224: {e}")
+
+        _render_thresholds()
+
+        if st.button("▶ Processar CSV ISO 14224", type="primary", use_container_width=True):
+            try:
+                with st.spinner("Processando CSV ISO 14224..."):
+                    raw = api.upload_csv_rich(file_bytes, file.name)
+                if not raw:
+                    st.error("❌ Nenhum registro válido encontrado.")
+                    return meta, None, False, None
+
+                rich_df = pd.DataFrame(raw)
+                records = [
+                    {"TBF": r["TBF"], "Tempo_Acumulado": r["Tempo_Acumulado"], "Falha": r["Falha"]}
+                    for r in raw
+                ]
+                n_falhas   = int(rich_df["Falha"].sum())
+                n_censuras = len(rich_df) - n_falhas
+                modos_uniq = rich_df["Modo_Falha"].nunique() if "Modo_Falha" in rich_df.columns else 0
+                st.success(
+                    f"✅ {len(records)} eventos | {n_falhas} falhas | {n_censuras} censuras"
+                    + (f" | {modos_uniq} modos de falha" if modos_uniq else "")
+                )
+                return meta, records, True, rich_df
+            except Exception as e:
+                st.error(f"❌ Erro ao processar: {str(e)}")
+                return meta, None, False, None
 
     return meta, None, False, None

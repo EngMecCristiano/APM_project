@@ -245,6 +245,100 @@ async def upload_csv(
     return engine.process_real_data(df, time_col, status_col)
 
 
+@router.post("/upload-csv-rich", response_model=List[RichDataRecord],
+             summary="Importa CSV ISO 14224 Completo (26 colunas)")
+async def upload_csv_rich(file: UploadFile = File(...)) -> List[RichDataRecord]:
+    """
+    Importa CSV com o esquema completo ISO 14224.
+    Colunas obrigatórias: TBF, Falha.
+    Aplica regra de censura: Tipo_Manutencao ∈ {Preventiva, Preditiva, Censura} → Falha = 0.
+    """
+    _TIPOS_CENSURA = {"Preventiva", "Preditiva", "Censura"}
+    _STR_DEFAULTS = {
+        "OS_Numero": "—", "Tag_Ativo": "EQP-01", "Tipo_Equipamento": "Genérico",
+        "Data_Inicio_Intervalo": "", "Data_Evento": "", "Data_Retorno_Operacao": "",
+        "Subcomponente": "—", "Modo_Falha": "—", "Causa_Raiz": "—",
+        "Mecanismo_Degradacao": "—", "Tipo_Manutencao": "Corretiva",
+        "Criticidade": "—", "Boundary": "—",
+    }
+    _NUM_DEFAULTS = {
+        "Num_Evento": 0, "TTR": 0.0, "Horimetro_Inicio": 0.0, "Horimetro_Evento": 0.0,
+        "Carga_Media_Pct": 0.0, "Temperatura_Media_C": 0.0, "Toneladas_Processadas": 0.0,
+        "Custo_Reparo_BRL": 0.0, "Impacto_Producao_t": 0.0, "Lucro_Cessante_BRL": 0.0,
+        "Disponibilidade_Ciclo_Pct": 100.0,
+    }
+
+    content = await file.read()
+    df = pd.read_csv(io.BytesIO(content))
+
+    if "TBF" not in df.columns or "Falha" not in df.columns:
+        raise HTTPException(status_code=422,
+            detail="CSV deve conter ao menos as colunas 'TBF' e 'Falha'.")
+    if len(df) < 3:
+        raise HTTPException(status_code=422,
+            detail=f"Dados insuficientes: {len(df)} registros (mínimo 3).")
+
+    df["TBF"]   = pd.to_numeric(df["TBF"],   errors="coerce")
+    df["Falha"] = pd.to_numeric(df["Falha"], errors="coerce").astype("Int64")
+    df = df[df["TBF"] > 0].reset_index(drop=True)
+
+    # Regra de censura por Tipo_Manutencao
+    if "Tipo_Manutencao" in df.columns:
+        mask = df["Tipo_Manutencao"].isin(_TIPOS_CENSURA)
+        df.loc[mask, "Falha"] = 0
+
+    df["Tempo_Acumulado"] = df["TBF"].cumsum()
+
+    # Preenche defaults para colunas ausentes
+    for col, val in _STR_DEFAULTS.items():
+        if col not in df.columns:
+            df[col] = val
+    for col, val in _NUM_DEFAULTS.items():
+        if col not in df.columns:
+            df[col] = val
+
+    if "Num_Evento" in df.columns and (df["Num_Evento"] == 0).all():
+        df["Num_Evento"] = range(1, len(df) + 1)
+
+    # Garante strings não-nulas
+    for col in _STR_DEFAULTS:
+        df[col] = df[col].fillna("—").astype(str)
+
+    records = []
+    for i, row in df.iterrows():
+        falha = int(row["Falha"]) if pd.notna(row["Falha"]) else 0
+        records.append(RichDataRecord(
+            OS_Numero=str(row["OS_Numero"]),
+            Tag_Ativo=str(row["Tag_Ativo"]),
+            Tipo_Equipamento=str(row["Tipo_Equipamento"]),
+            Num_Evento=int(row["Num_Evento"]),
+            Data_Inicio_Intervalo=str(row["Data_Inicio_Intervalo"]),
+            Data_Evento=str(row["Data_Evento"]),
+            Data_Retorno_Operacao=str(row["Data_Retorno_Operacao"]),
+            TBF=float(row["TBF"]),
+            TTR=float(row["TTR"]),
+            Horimetro_Inicio=float(row["Horimetro_Inicio"]),
+            Horimetro_Evento=float(row["Horimetro_Evento"]),
+            Falha=falha,
+            Subcomponente=str(row["Subcomponente"]),
+            Modo_Falha=str(row["Modo_Falha"]),
+            Causa_Raiz=str(row["Causa_Raiz"]),
+            Mecanismo_Degradacao=str(row["Mecanismo_Degradacao"]),
+            Tipo_Manutencao=str(row["Tipo_Manutencao"]),
+            Criticidade=str(row["Criticidade"]),
+            Boundary=str(row["Boundary"]),
+            Carga_Media_Pct=float(row["Carga_Media_Pct"]),
+            Temperatura_Media_C=float(row["Temperatura_Media_C"]),
+            Toneladas_Processadas=float(row["Toneladas_Processadas"]),
+            Custo_Reparo_BRL=float(row["Custo_Reparo_BRL"]),
+            Impacto_Producao_t=float(row["Impacto_Producao_t"]),
+            Lucro_Cessante_BRL=float(row["Lucro_Cessante_BRL"]),
+            Tempo_Acumulado=float(row["Tempo_Acumulado"]),
+            Disponibilidade_Ciclo_Pct=float(row["Disponibilidade_Ciclo_Pct"]),
+        ))
+    return records
+
+
 @router.post("/csv-columns", summary="Lista colunas do CSV")
 async def csv_columns(file: UploadFile = File(...)) -> dict:
     """Retorna as colunas disponíveis do CSV sem processar os dados."""
