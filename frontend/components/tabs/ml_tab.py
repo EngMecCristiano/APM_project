@@ -8,6 +8,7 @@ import streamlit as st
 import pandas as pd
 from typing import Dict, Any, List
 
+import plotly.graph_objects as go
 import frontend.api_client as api
 from frontend.components.charts import (
     plot_trend, plot_forecast, plot_anomalies,
@@ -402,6 +403,107 @@ $$C(t_p) = \\frac{{C_p \\cdot R(t_p) + C_u \\cdot F(t_p)}}{{\\int_0^{{t_p}} R(x)
 """)
 
 
+# ─── Pareto Prescritivo 80/20 ────────────────────────────────────────────────
+
+def _plot_prescriptive_pareto(acoes: list) -> go.Figure:
+    """Pareto 80/20 das ações prescritas — barras com degradê criticidade + % acumulada."""
+    if not acoes:
+        return go.Figure()
+
+    # Ordena por prioridade e agrupa por subcomponente somando custo_relativo
+    from collections import defaultdict
+    scores: dict = defaultdict(float)
+    crits:  dict = {}
+    for a in sorted(acoes, key=lambda x: x.get("prioridade", 99)):
+        sub   = a.get("subcomponente", "—")
+        crit  = a.get("criticidade", "Média")
+        custo = float(a.get("custo_relativo", 1.0))
+        scores[sub] += custo
+        if sub not in crits:
+            crits[sub] = crit
+
+    # Ordena decrescente
+    labels = sorted(scores, key=lambda k: scores[k], reverse=True)
+    vals   = [scores[k] for k in labels]
+    total  = sum(vals)
+    cum    = [sum(vals[: i + 1]) / total * 100 for i in range(len(vals))]
+
+    # Degradê de cores por criticidade (Alta→Média→Baixa) + posição
+    CRIT_BASE = {"Alta": (220, 38, 38), "Média": (59, 130, 246), "Baixa": (16, 185, 129)}
+    n = len(labels)
+    bar_colors = []
+    for i, lbl in enumerate(labels):
+        crit = crits.get(lbl, "Média")
+        r0, g0, b0 = CRIT_BASE.get(crit, (59, 130, 246))
+        # Degrade: 100% intensidade no primeiro, 55% no último
+        alpha = 1.0 - (i / max(n - 1, 1)) * 0.45
+        r = int(r0 * alpha + 255 * (1 - alpha))
+        g = int(g0 * alpha + 255 * (1 - alpha))
+        b = int(b0 * alpha + 255 * (1 - alpha))
+        bar_colors.append(f"rgb({r},{g},{b})")
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Bar(
+        x=labels, y=vals,
+        name="Custo Relativo",
+        marker=dict(color=bar_colors, line=dict(color="rgba(255,255,255,0.15)", width=1)),
+        yaxis="y",
+        text=[f"{v:.1f}×" for v in vals],
+        textposition="outside",
+        textfont=dict(size=10, color="#E2E8F0"),
+    ))
+
+    fig.add_trace(go.Scatter(
+        x=labels, y=cum,
+        name="% Acumulada",
+        mode="lines+markers+text",
+        line=dict(color="#F59E0B", width=2.5),
+        marker=dict(size=7, color="#F59E0B",
+                    line=dict(color="#0E1117", width=1.5)),
+        text=[f"{v:.0f}%" for v in cum],
+        textposition="top center",
+        textfont=dict(size=9, color="#F59E0B"),
+        yaxis="y2",
+    ))
+
+    # Linha 80%
+    fig.add_hline(
+        y=80, line_dash="dash", line_color="#DC2626", line_width=1.5,
+        annotation_text="80% — Regra de Pareto",
+        annotation_position="top right",
+        annotation_font=dict(color="#DC2626", size=10),
+        yref="y2",
+    )
+
+    fig.update_layout(
+        title=dict(
+            text="Análise de Pareto — Impacto por Subcomponente (Custo Relativo × Criticidade)",
+            font=dict(size=13, color="#E2E8F0"),
+        ),
+        plot_bgcolor="#0E1117",
+        paper_bgcolor="#0E1117",
+        font=dict(color="#E2E8F0"),
+        xaxis=dict(tickangle=-30, showgrid=False, tickfont=dict(size=10)),
+        yaxis=dict(
+            title="Custo Relativo Acumulado",
+            gridcolor="#1E293B",
+            titlefont=dict(size=10),
+        ),
+        yaxis2=dict(
+            title="% Acumulada",
+            overlaying="y", side="right",
+            range=[0, 115],
+            showgrid=False,
+            titlefont=dict(size=10),
+        ),
+        legend=dict(orientation="h", y=1.14, x=0, font=dict(size=10)),
+        margin=dict(t=70, b=70, l=50, r=60),
+        bargap=0.25,
+    )
+    return fig
+
+
 # ─── Manutenção Prescritiva com Agente de IA ──────────────────────────────────
 
 def _render_prescriptive(
@@ -563,6 +665,13 @@ e sintetiza tudo em um **plano de ação priorizado com justificativas técnicas
     acoes = result.get("acoes", [])
     if acoes:
         st.markdown(f"### Plano de Ação Prescritivo — {len(acoes)} Intervenção(ões)")
+
+        # ── Pareto 80/20 com degradê de cores ────────────────────────────────
+        st.plotly_chart(
+            _plot_prescriptive_pareto(acoes),
+            use_container_width=True,
+            config=PLOTLY_CONFIG,
+        )
 
         crit_colors = {"Alta": "🔴", "Média": "🟡", "Baixa": "🟢"}
 
