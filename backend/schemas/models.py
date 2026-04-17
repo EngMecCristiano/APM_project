@@ -11,12 +11,19 @@ from typing import Optional, List, Dict, Any
 # ─── Metadados do ativo ───────────────────────────────────────────────────────
 
 class AssetMeta(BaseModel):
-    tag:              str   = "BRT-01A"
+    tag:              str   = "EQP-01A"
     nome:             str   = "Equipamento"
     numero_serie:     str   = "SN-000000"
-    tipo_equipamento: str   = "Britador Cônico"
+    tipo_equipamento: str   = "Equipamento Genérico"
     horimetro_atual:  float = 800.0
     data_estudo:      str   = ""
+    # Campos ISO 14224 — metadados de identificação e contexto
+    fabricante:                 Optional[str] = None
+    modelo:                     Optional[str] = None
+    data_instalacao:            Optional[str] = None   # YYYY-MM-DD
+    classificacao_ambiental:    Optional[str] = None   # ex: "Ambiente Geral", "Offshore — FPSO"
+    setor:                      Optional[str] = None   # ex: "Mineração", "Petróleo & Gás"
+    responsavel_manutencao:     Optional[str] = None
 
 
 # ─── Entrada de dados ─────────────────────────────────────────────────────────
@@ -44,7 +51,7 @@ class RichSimulationRequest(SimulationRequest):
 
 
 class RichDataRecord(BaseModel):
-    """Registro completo de evento de manutenção (25 colunas)."""
+    """Registro completo de evento de manutenção (26 colunas — ISO 14224:2016)."""
     # Identificação
     OS_Numero:            str
     Tag_Ativo:            str
@@ -67,6 +74,7 @@ class RichDataRecord(BaseModel):
     Mecanismo_Degradacao:   str
     Tipo_Manutencao:        str
     Criticidade:            str
+    Boundary:               str     # "Interno" | "Externo" | "—" (ISO 14224 boundary classification)
     # Contexto operacional
     Carga_Media_Pct:        float
     Temperatura_Media_C:    float
@@ -78,6 +86,39 @@ class RichDataRecord(BaseModel):
     # Acumulado
     Tempo_Acumulado:              float
     Disponibilidade_Ciclo_Pct:    float
+
+
+# ─── ISO 14224 — Validação de Conformidade ────────────────────────────────────
+
+class ISO14224Issue(BaseModel):
+    campo:      str
+    linha:      Optional[int] = None
+    severidade: str           # "erro" | "aviso"
+    descricao:  str
+
+
+class ISO14224ValidationResult(BaseModel):
+    """Resultado da validação de conformidade ISO 14224 de um dataset."""
+    conforme:           bool
+    score_conformidade: float      # 0.0 – 100.0
+    n_registros:        int
+    n_falhas:           int
+    n_censurados:       int
+    issues:             List[ISO14224Issue]
+    campos_presentes:   List[str]
+    campos_ausentes:    List[str]
+    resumo:             str
+
+
+# ─── Catálogo de Equipamentos ─────────────────────────────────────────────────
+
+class EquipmentSummary(BaseModel):
+    name:           str
+    sector:         str
+    iso14224_class: str
+    beta:           float
+    eta:            float
+    n_scenarios:    int
 
 
 class DataRecord(BaseModel):

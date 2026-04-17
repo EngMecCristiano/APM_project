@@ -86,14 +86,67 @@ def list_assets() -> List[Dict[str, Any]]:
 
 # ─── Deletar ──────────────────────────────────────────────────────────────────
 
-def delete(tag: str) -> bool:
-    """Remove o histórico de um ativo. Retorna True se existia."""
-    path = HISTORY_DIR / f"{_safe_tag(tag)}.parquet"
+def save_rich(tag: str, records: List[Dict[str, Any]], meta: Dict[str, Any]) -> int:
+    """
+    Persiste registros enriquecidos (taxonomia ISO 14224 completa) do ativo.
+    Arquivo separado: {tag}_rich.parquet — não interfere com histórico slim.
+    Faz merge eliminando duplicatas por (Data_Evento, Num_Evento).
+    """
+    _ensure_dir()
+    path = HISTORY_DIR / f"{_safe_tag(tag)}_rich.parquet"
+
+    df_new = pd.DataFrame(records)
+    df_new["_session"] = datetime.now().isoformat()
+
     if path.exists():
-        path.unlink()
+        df_old = pd.read_parquet(path)
+        dedup_cols = [c for c in ["Data_Evento", "Num_Evento", "OS_Numero"] if c in df_new.columns]
+        if dedup_cols:
+            df_merged = (
+                pd.concat([df_old, df_new], ignore_index=True)
+                .drop_duplicates(subset=dedup_cols, keep="last")
+                .sort_values(dedup_cols[0] if dedup_cols else df_new.columns[0])
+                .reset_index(drop=True)
+            )
+        else:
+            df_merged = pd.concat([df_old, df_new], ignore_index=True).reset_index(drop=True)
+    else:
+        df_merged = df_new.reset_index(drop=True)
+
+    df_merged.to_parquet(path, index=False)
+    _update_index(tag, meta, len(df_merged))
+    logger.info("Histórico rico salvo — TAG=%s  total=%d", tag, len(df_merged))
+    return len(df_merged)
+
+
+def load_rich(tag: str) -> Optional[List[Dict[str, Any]]]:
+    """
+    Carrega registros enriquecidos com taxonomia ISO 14224 completa.
+    Retorna None se não houver histórico rico.
+    """
+    path = HISTORY_DIR / f"{_safe_tag(tag)}_rich.parquet"
+    if not path.exists():
+        return None
+    df = pd.read_parquet(path)
+    # Remove coluna interna de sessão antes de retornar
+    return df.drop(columns=["_session"], errors="ignore").to_dict(orient="records")
+
+
+def delete(tag: str) -> bool:
+    """Remove histórico slim e rico de um ativo. Retorna True se algum existia."""
+    stag = _safe_tag(tag)
+    slim = HISTORY_DIR / f"{stag}.parquet"
+    rich = HISTORY_DIR / f"{stag}_rich.parquet"
+    existed = False
+    if slim.exists():
+        slim.unlink()
+        existed = True
+    if rich.exists():
+        rich.unlink()
+        existed = True
+    if existed:
         _remove_index(tag)
-        return True
-    return False
+    return existed
 
 
 # ─── Índice interno ───────────────────────────────────────────────────────────

@@ -11,19 +11,69 @@ from typing import Dict, Any, List, Tuple, Optional
 
 import frontend.api_client as api
 
-EQUIPMENT_TYPES = [
-    "Britador Cônico",
-    "Peneira Vibratória",
-    "Bomba de Polpa",
-    "Transportador de Correia",
-    "Outro (personalizado)",
+# ─── Listas ISO 14224 estáticas (espelham equipment_catalog.json) ─────────────
+ENVIRONMENTAL_CLASSIFICATIONS = [
+    "Ambiente Geral",
+    "Área Classificada (Zona 1)",
+    "Área Classificada (Zona 2)",
+    "Offshore — Plataforma",
+    "Offshore — FPSO",
+    "Onshore — Deserto",
+    "Onshore — Tropical",
+    "Onshore — Ártico",
+    "Ambiente Corrosivo",
+    "Sala Limpa",
 ]
 
+MECANISMOS_DEGRADACAO = [
+    "Abrasão", "Erosão", "Corrosão", "Fadiga", "Fadiga Térmica",
+    "Fadiga de Contato", "Fadiga por Flexão", "Fadiga por Torção",
+    "Erosão-Corrosão", "Corrosão-Abrasão", "Fadiga-Abrasão",
+    "Cavitação", "Desgaste", "Deformação Plástica", "Fratura Frágil",
+    "Penetração/Corte", "Sobrecarga Mecânica", "Acumulação",
+    "Contaminação", "Degradação Elétrica", "Degradação Térmica",
+    "Vibração Excessiva", "Desequilíbrio",
+]
+
+TIPOS_MANUTENCAO = ["Corretiva", "Corretiva Emergencial", "Preventiva", "Preditiva", "Censura"]
+CRITICIDADES     = ["Alta", "Média", "Baixa"]
+BOUNDARIES       = ["Interno", "Externo"]
+
 # Parâmetros Weibull padrão para equipamento personalizado
-CUSTOM_BETA_DEFAULT = 1.5
-CUSTOM_ETA_DEFAULT  = 1000.0
-CUSTOM_MU_DEFAULT   = 6.5    # ln(665 h) ≈ mediana ~665 h
+CUSTOM_BETA_DEFAULT  = 1.5
+CUSTOM_ETA_DEFAULT   = 1000.0
+CUSTOM_MU_DEFAULT    = 6.5
 CUSTOM_SIGMA_DEFAULT = 0.8
+
+
+@st.cache_data(ttl=300)
+def _fetch_catalog() -> List[Dict]:
+    """Carrega catálogo de equipamentos do backend com cache de 5 min."""
+    try:
+        return api.get_equipment_catalog()
+    except Exception:
+        return []
+
+
+def _build_equipment_options(catalog: List[Dict]) -> Tuple[List[str], Dict[str, str]]:
+    """
+    Retorna lista de nomes para o selectbox e mapa nome→setor.
+    Agrupa por setor com separadores visuais.
+    """
+    by_sector: Dict[str, List[str]] = {}
+    sector_map: Dict[str, str] = {}
+    for eq in catalog:
+        s = eq.get("sector", "Geral")
+        by_sector.setdefault(s, []).append(eq["name"])
+        sector_map[eq["name"]] = s
+
+    options: List[str] = []
+    for sector, names in by_sector.items():
+        options.append(f"── {sector} ──")   # separador de grupo (não selecionável)
+        options.extend(names)
+    options.append("── Personalizado ──")
+    options.append("Outro (personalizado)")
+    return options, sector_map
 
 
 def render_sidebar() -> Tuple[
@@ -35,19 +85,37 @@ def render_sidebar() -> Tuple[
     """
     Renderiza a sidebar e retorna (meta, records, triggered, rich_df).
     - records: lista slim {TBF, Tempo_Acumulado, Falha} para o pipeline de análise
-    - rich_df: DataFrame completo (25 col) apenas quando modo Enriquecido
+    - rich_df: DataFrame completo (26 col) apenas quando modo Enriquecido
     """
     with st.sidebar:
         st.markdown(
             '<p style="font-size:17px;font-weight:700;color:#DEF7FF;margin:0 0 4px 0;'
             'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'
-            '🚜 Configuração do Estudo</p>'
+            '⚙️ Configuração do Estudo</p>'
             '<br>',
             unsafe_allow_html=True,
         )
         st.divider()
 
-        tipo_sel = st.selectbox("Classe do Ativo", EQUIPMENT_TYPES)
+        # ── Seleção de equipamento (catálogo ISO 14224 dinâmico) ─────────────
+        catalog = _fetch_catalog()
+        options, sector_map = _build_equipment_options(catalog)
+
+        # Filtra separadores da lista de opções válidas
+        def _is_separator(opt: str) -> bool:
+            return opt.startswith("──")
+
+        selected = st.selectbox(
+            "Classe do Ativo",
+            options=options,
+            format_func=lambda x: x,
+        )
+
+        # Se separador foi selecionado, força para o próximo item válido
+        if _is_separator(selected):
+            valid = [o for o in options if not _is_separator(o)]
+            selected = valid[0] if valid else "Outro (personalizado)"
+            st.session_state["_sidebar_eq"] = selected
 
         # ── Equipamento personalizado ─────────────────────────────────────────
         custom_beta:  Optional[float] = None
@@ -56,11 +124,11 @@ def render_sidebar() -> Tuple[
         custom_sigma: Optional[float] = None
         custom_dist:  Optional[str]   = None
 
-        if tipo_sel == "Outro (personalizado)":
+        if selected == "Outro (personalizado)":
             tipo_eq = st.text_input(
                 "Nome do Equipamento",
                 value="",
-                placeholder="ex: Compressor de Ar, Turbina a Vapor...",
+                placeholder="ex: Compressor de Ar, Turbina a Gás...",
             )
             with st.expander("⚙️ Parâmetros do Simulador", expanded=True):
                 custom_dist = st.radio(
@@ -69,42 +137,35 @@ def render_sidebar() -> Tuple[
                     horizontal=True,
                     help="Define a distribuição usada para gerar os TBFs sintéticos.",
                 )
-
                 if custom_dist == "Weibull":
                     st.caption("Weibull — adequada para desgaste progressivo e mortalidade infantil.")
                     c1, c2 = st.columns(2)
                     with c1:
                         custom_beta = st.number_input(
-                            "β — forma",
-                            min_value=0.1, max_value=10.0,
+                            "β — forma", min_value=0.1, max_value=10.0,
                             value=CUSTOM_BETA_DEFAULT, step=0.1,
                             help="β < 1: mortalidade infantil  |  β = 1: aleatório  |  β > 1: desgaste",
                         )
                     with c2:
                         custom_eta = st.number_input(
-                            "η — escala (h)",
-                            min_value=10.0, max_value=50000.0,
+                            "η — escala (h)", min_value=10.0, max_value=50000.0,
                             value=CUSTOM_ETA_DEFAULT, step=100.0,
                             help="63,2% dos equipamentos falharam até η horas.",
                         )
-                else:  # Lognormal
+                else:
                     st.caption("Lognormal — adequada para fadiga, corrosão e componentes eletrônicos.")
                     c1, c2 = st.columns(2)
                     with c1:
                         custom_mu = st.number_input(
-                            "μ — log-média",
-                            min_value=1.0, max_value=12.0,
+                            "μ — log-média", min_value=1.0, max_value=12.0,
                             value=CUSTOM_MU_DEFAULT, step=0.1,
-                            help="Logaritmo natural da mediana de vida. μ=6,5 → mediana ≈ 665 h.",
+                            help="Logaritmo natural da mediana de vida.",
                         )
                     with c2:
                         custom_sigma = st.number_input(
-                            "σ — log-desvio",
-                            min_value=0.05, max_value=3.0,
+                            "σ — log-desvio", min_value=0.05, max_value=3.0,
                             value=CUSTOM_SIGMA_DEFAULT, step=0.05,
-                            help="Dispersão em escala log. Valores altos = alta variabilidade entre falhas.",
                         )
-                    # Mostra mediana e percentis para orientar o usuário
                     import math
                     mediana = math.exp(custom_mu)
                     p10 = math.exp(custom_mu - 1.28 * custom_sigma)
@@ -115,21 +176,55 @@ def render_sidebar() -> Tuple[
 
             if not tipo_eq:
                 tipo_eq = "Equipamento Personalizado"
+            setor_eq = "Personalizado"
         else:
-            tipo_eq = tipo_sel
+            tipo_eq  = selected
+            setor_eq = sector_map.get(selected, "Geral")
+            # Mostra parâmetros do equipamento selecionado
+            eq_info = next((e for e in catalog if e["name"] == selected), None)
+            if eq_info:
+                st.caption(
+                    f"**{eq_info.get('iso14224_class', '')}** · {setor_eq} · "
+                    f"β={eq_info['beta']:.1f} · η={eq_info['eta']:.0f} h · "
+                    f"{eq_info['n_scenarios']} cenários de falha"
+                )
 
-        tag_eq   = st.text_input("TAG Operacional", value="BRT-01A")
-        serie_eq = st.text_input("Número de Série", value="SN-998822",
+        # ── Identificação do ativo ────────────────────────────────────────────
+        tag_eq   = st.text_input("TAG Operacional", value="EQP-01A")
+        serie_eq = st.text_input("Número de Série", value="SN-000000",
                                  help="Identificador único para rastreabilidade.")
         h_atual  = st.number_input("Horímetro Atual (h)", value=800.0, step=100.0)
 
+        # ── Metadados ISO 14224 ───────────────────────────────────────────────
+        with st.expander("📋 Metadados ISO 14224", expanded=False):
+            st.caption("Campos de identificação conforme ISO 14224:2016 §6.3.")
+            fabricante = st.text_input("Fabricante", value="",
+                                       placeholder="ex: SKF, Sulzer, Siemens")
+            modelo = st.text_input("Modelo / Referência", value="",
+                                   placeholder="ex: LT110, MBH-300")
+            data_inst = st.text_input("Data de Instalação", value="",
+                                      placeholder="AAAA-MM-DD")
+            class_amb = st.selectbox(
+                "Classificação Ambiental",
+                options=ENVIRONMENTAL_CLASSIFICATIONS,
+                help="Ambiente operacional conforme ISO 14224 §5.4.",
+            )
+            responsavel = st.text_input("Responsável pela Manutenção", value="",
+                                        placeholder="ex: Equipe Mecânica Turno A")
+
         meta: Dict[str, Any] = {
-            "tag":              tag_eq,
-            "nome":             "Equipamento",
-            "numero_serie":     serie_eq,
-            "tipo_equipamento": tipo_eq,
-            "horimetro_atual":  float(h_atual),
-            "data_estudo":      datetime.now().strftime("%Y-%m-%d"),
+            "tag":                      tag_eq,
+            "nome":                     "Equipamento",
+            "numero_serie":             serie_eq,
+            "tipo_equipamento":         tipo_eq,
+            "horimetro_atual":          float(h_atual),
+            "data_estudo":              datetime.now().strftime("%Y-%m-%d"),
+            "fabricante":               fabricante or None,
+            "modelo":                   modelo or None,
+            "data_instalacao":          data_inst or None,
+            "classificacao_ambiental":  class_amb,
+            "setor":                    setor_eq,
+            "responsavel_manutencao":   responsavel or None,
         }
 
         _render_history_panel(tag_eq, meta)
@@ -142,7 +237,12 @@ def render_sidebar() -> Tuple[
         )
         mode = st.radio(
             "Modo de Entrada",
-            ["Simulador Paramétrico", "Simulação Enriquecida (ISO 14224)", "Importar CSV Real"],
+            [
+                "Simulador Paramétrico",
+                "Simulação Enriquecida (ISO 14224)",
+                "Entrada Manual (ISO 14224)",
+                "Importar CSV Real",
+            ],
             label_visibility="collapsed",
         )
         st.divider()
@@ -151,6 +251,8 @@ def render_sidebar() -> Tuple[
             return _render_simulator(meta, tipo_eq, custom_beta, custom_eta, custom_mu, custom_sigma, custom_dist)
         elif mode == "Simulação Enriquecida (ISO 14224)":
             return _render_rich_simulator(meta, tipo_eq, tag_eq, custom_beta, custom_eta, custom_mu, custom_sigma, custom_dist)
+        elif mode == "Entrada Manual (ISO 14224)":
+            return _render_manual_entry(meta, tipo_eq, tag_eq, catalog)
         else:
             return _render_upload(meta)
 
@@ -204,20 +306,19 @@ def _render_thresholds() -> None:
         c1, c2, c3 = st.columns(3)
         with c1:
             risk_medio = st.number_input(
-                "MÉD ≥",
-                min_value=5, max_value=60, value=30, step=5,
+                "MÉD ≥", min_value=5, max_value=60, value=30, step=5,
                 help="Score ≥ este valor → risco MÉDIO.",
             )
         with c2:
             risk_alto = st.number_input(
-                "ALTO ≥",
-                min_value=risk_medio + 5, max_value=85, value=max(50, risk_medio + 5), step=5,
+                "ALTO ≥", min_value=risk_medio + 5, max_value=85,
+                value=max(50, risk_medio + 5), step=5,
                 help="Score ≥ este valor → risco ALTO.",
             )
         with c3:
             risk_critical = st.number_input(
-                "CRIT ≥",
-                min_value=risk_alto + 5, max_value=95, value=max(70, risk_alto + 5), step=5,
+                "CRIT ≥", min_value=risk_alto + 5, max_value=95,
+                value=max(70, risk_alto + 5), step=5,
                 help="Score ≥ este valor → risco CRÍTICO.",
             )
 
@@ -225,12 +326,11 @@ def _render_thresholds() -> None:
             "Bootstrap RUL (amostras)",
             options=[50, 100, 200, 300, 500, 1000],
             value=300,
-            help="Número de reamostragens para o IC do RUL. Mais amostras = mais preciso, porém mais lento.",
+            help="Número de reamostragens para o IC do RUL.",
         )
 
-        # Persiste no session_state para app.py usar
-        st.session_state["rul_threshold"] = rul_pct / 100.0
-        st.session_state["n_bootstrap"]   = int(n_bootstrap)
+        st.session_state["rul_threshold"]   = rul_pct / 100.0
+        st.session_state["n_bootstrap"]     = int(n_bootstrap)
         st.session_state["risk_thresholds"] = {
             "critical": int(risk_critical),
             "alto":     int(risk_alto),
@@ -248,11 +348,10 @@ def _render_simulator(
     custom_sigma: Optional[float] = None,
     custom_dist:  Optional[str]   = None,
 ) -> Tuple[Optional[Dict], Optional[List[Dict]], bool, None]:
-    n = st.slider("Número de Amostras", 100, 2000, 500, 50)
-
-    noise   = st.slider("Ruído Gaussiano (%)",     0.0, 50.0,  0.0, 1.0)
-    outlier = st.slider("Mortalidade Infantil (%)", 0.0, 20.0,  0.0, 1.0)
-    aging   = st.slider("Fadiga Sistêmica (%)",     0.0,  5.0,  0.0, 0.1)
+    n       = st.slider("Número de Amostras", 100, 2000, 500, 50)
+    noise   = st.slider("Ruído Gaussiano (%)",      0.0, 50.0, 0.0, 1.0)
+    outlier = st.slider("Mortalidade Infantil (%)", 0.0, 20.0, 0.0, 1.0)
+    aging   = st.slider("Fadiga Sistêmica (%)",     0.0,  5.0, 0.0, 0.1)
     st.divider()
 
     _render_thresholds()
@@ -282,18 +381,17 @@ def _render_rich_simulator(
     custom_dist:  Optional[str]   = None,
 ) -> Tuple[Optional[Dict], Optional[List[Dict]], bool, Optional[pd.DataFrame]]:
 
-    st.caption("Gera dataset completo: modo de falha, causa raiz, TTR, datas, custo e produção perdida.")
+    st.caption("Gera dataset completo: modo de falha, causa raiz, TTR, datas, custo, boundary e produção perdida.")
 
-    n = st.slider("Número de Amostras", 100, 2000, 500, 50, key="rich_n")
-
-    noise   = st.slider("Ruído Gaussiano (%)",     0.0, 50.0,  0.0, 1.0, key="rich_noise")
-    outlier = st.slider("Mortalidade Infantil (%)", 0.0, 20.0,  0.0, 1.0, key="rich_out")
-    aging   = st.slider("Fadiga Sistêmica (%)",     0.0,  5.0,  0.0, 0.1, key="rich_aging")
+    n       = st.slider("Número de Amostras", 100, 2000, 500, 50, key="rich_n")
+    noise   = st.slider("Ruído Gaussiano (%)",      0.0, 50.0, 0.0, 1.0, key="rich_noise")
+    outlier = st.slider("Mortalidade Infantil (%)", 0.0, 20.0, 0.0, 1.0, key="rich_out")
+    aging   = st.slider("Fadiga Sistêmica (%)",     0.0,  5.0, 0.0, 0.1, key="rich_aging")
     st.divider()
 
-    start_date  = st.date_input("Data de Início do Histórico", value=datetime(2021, 1, 1))
-    preco_t     = st.number_input("Valor do Produto (R$/t)", value=45.0, step=5.0,
-                                  help="Usado para calcular lucro cessante por parada.")
+    start_date = st.date_input("Data de Início do Histórico", value=datetime(2021, 1, 1))
+    preco_t    = st.number_input("Valor do Produto (R$/t)", value=45.0, step=5.0,
+                                 help="Usado para calcular lucro cessante por parada.")
 
     _render_thresholds()
 
@@ -316,19 +414,208 @@ def _render_rich_simulator(
             )
 
         rich_df = pd.DataFrame(raw)
-
-        # Records slim para o pipeline de análise (apenas TBF, Tempo_Acumulado, Falha)
         records = [
             {"TBF": r["TBF"], "Tempo_Acumulado": r["Tempo_Acumulado"], "Falha": r["Falha"]}
             for r in raw
         ]
 
+        n_boundary_ext = int((rich_df["Boundary"] == "Externo").sum()) if "Boundary" in rich_df.columns else 0
         st.success(
             f"✅ {len(records)} eventos | "
             f"{int(rich_df['Falha'].sum())} falhas | "
-            f"{len(rich_df['Modo_Falha'].unique())} modos de falha"
+            f"{len(rich_df['Modo_Falha'].unique())} modos de falha | "
+            f"{n_boundary_ext} causas externas (boundary)"
         )
         return meta, records, True, rich_df
+
+    return meta, None, False, None
+
+
+# ─── Entrada Manual ISO 14224 ────────────────────────────────────────────────
+
+def _taxonomy_field(
+    label: str,
+    catalog_values: List[str],
+    key: str,
+    help_text: str = "",
+) -> str:
+    """
+    Selectbox com valores do catálogo + opção 'Outro (personalizado)' que revela
+    um text_input para o usuário digitar valor livre.
+    """
+    OPTIONS = catalog_values + ["Outro (personalizado)"]
+    sel = st.selectbox(label, OPTIONS, key=f"{key}_sel", help=help_text)
+    if sel == "Outro (personalizado)":
+        val = st.text_input(f"▸ {label} personalizado", key=f"{key}_txt",
+                            placeholder="Digite o valor...")
+        return val.strip() or "—"
+    return sel
+
+
+def _render_manual_entry(
+    meta: Dict[str, Any],
+    tipo_eq: str,
+    tag_eq: str,
+    catalog: List[Dict],
+) -> Tuple[Optional[Dict], Optional[List[Dict]], bool, None]:
+    """
+    Formulário de entrada manual de eventos de manutenção com taxonomia ISO 14224 completa.
+    Os eventos são acumulados em session_state e salvos no banco como histórico rico.
+    """
+    st.caption("Registre eventos reais com taxonomia ISO 14224. Os dados são salvos no banco por TAG.")
+
+    # Busca cenários do equipamento selecionado para popular dropdowns
+    eq_entry   = next((e for e in catalog if e["name"] == tipo_eq), None)
+    scenarios  = eq_entry.get("failure_scenarios", []) if eq_entry else []
+
+    subcomps   = sorted({s["subcomponente"]      for s in scenarios}) or ["—"]
+    modos      = sorted({s["modo_falha"]          for s in scenarios}) or ["—"]
+    causas     = sorted({s["causa_raiz"]          for s in scenarios}) or ["—"]
+    mecanismos_cat = sorted({s["mecanismo"]       for s in scenarios}) or ["—"]
+
+    # Listas ISO 14224 do catálogo (ou defaults)
+    mecanismos_all = MECANISMOS_DEGRADACAO or mecanismos_cat
+    tipos_manut    = TIPOS_MANUTENCAO
+    criticidades   = CRITICIDADES
+    boundaries     = BOUNDARIES
+
+    # Inicializa lista de eventos na sessão
+    if "manual_events" not in st.session_state:
+        st.session_state["manual_events"] = []
+
+    # ── Formulário de novo evento ─────────────────────────────────────────────
+    with st.expander("➕ Adicionar Evento de Manutenção", expanded=True):
+        c1, c2 = st.columns(2)
+        with c1:
+            data_evt = st.date_input("Data do Evento", key="me_data_evt")
+            tbf = st.number_input("TBF (horas)", min_value=0.1, value=100.0,
+                                  step=10.0, key="me_tbf",
+                                  help="Tempo Entre Falhas em horas.")
+        with c2:
+            falha = st.selectbox("Tipo de Registro", [1, 0], key="me_falha",
+                                 format_func=lambda x: "1 — Falha Confirmada" if x == 1 else "0 — Censura (Em Operação)")
+            ttr = st.number_input("TTR (horas)", min_value=0.0, value=0.0,
+                                  step=1.0, key="me_ttr",
+                                  help="Time To Repair. Zero para censuras.")
+
+        os_num = st.text_input("Número da OS", value="",
+                               placeholder="ex: OS-2024-0001 (auto se vazio)", key="me_os")
+
+        st.markdown("**Taxonomia ISO 14224**")
+
+        sub = _taxonomy_field("Subcomponente", subcomps, "me_sub",
+                              "Parte do equipamento onde ocorreu a falha.")
+        modo = _taxonomy_field("Modo de Falha", modos, "me_modo",
+                               "Como a falha se manifestou (ex: Desgaste, Fratura).")
+        causa = _taxonomy_field("Causa Raiz", causas, "me_causa",
+                                "Por que a falha ocorreu (ex: Lubrificação Deficiente).")
+        mec = _taxonomy_field("Mecanismo de Degradação", mecanismos_all, "me_mec",
+                              "Processo físico-químico da degradação (ex: Fadiga, Corrosão).")
+
+        c3, c4, c5 = st.columns(3)
+        with c3:
+            tipo_m = st.selectbox("Tipo de Manutenção", tipos_manut, key="me_tipo")
+        with c4:
+            crit = st.selectbox("Criticidade", criticidades, key="me_crit")
+        with c5:
+            bound = st.selectbox("Boundary", boundaries, key="me_bound",
+                                 help="Interno: causa dentro do equipamento. Externo: causa no processo/ambiente.")
+
+        st.markdown("**Contexto Operacional (opcional)**")
+        c6, c7, c8 = st.columns(3)
+        with c6:
+            carga = st.number_input("Carga (%)", 0.0, 100.0, 75.0, 5.0, key="me_carga")
+        with c7:
+            temp = st.number_input("Temperatura (°C)", -50.0, 500.0, 45.0, 5.0, key="me_temp")
+        with c8:
+            tons = st.number_input("Toneladas Processadas", 0.0, 1e7, 0.0, 100.0, key="me_tons")
+
+        st.markdown("**Financeiro (opcional)**")
+        c9, c10 = st.columns(2)
+        with c9:
+            custo = st.number_input("Custo Reparo (R$)", 0.0, 1e8, 0.0, 100.0, key="me_custo")
+        with c10:
+            lucro = st.number_input("Lucro Cessante (R$)", 0.0, 1e9, 0.0, 100.0, key="me_lucro")
+
+        if st.button("➕ Adicionar à Lista", use_container_width=True):
+            from datetime import datetime as _dt
+            n_evt = len(st.session_state["manual_events"]) + 1
+            tempo_ac = sum(e["TBF"] for e in st.session_state["manual_events"]) + tbf
+            evento = {
+                "OS_Numero":               os_num or f"OS-{data_evt.strftime('%Y')}-{n_evt:04d}",
+                "Tag_Ativo":               tag_eq,
+                "Tipo_Equipamento":        tipo_eq,
+                "Num_Evento":              n_evt,
+                "Data_Inicio_Intervalo":   "",
+                "Data_Evento":             data_evt.strftime("%Y-%m-%d"),
+                "Data_Retorno_Operacao":   "",
+                "TBF":                     float(tbf),
+                "TTR":                     float(ttr),
+                "Horimetro_Inicio":        0.0,
+                "Horimetro_Evento":        tempo_ac,
+                "Falha":                   int(falha),
+                "Subcomponente":           sub if falha == 1 else "—",
+                "Modo_Falha":              modo if falha == 1 else "Censura (Em Operação)",
+                "Causa_Raiz":              causa if falha == 1 else "—",
+                "Mecanismo_Degradacao":    mec if falha == 1 else "—",
+                "Tipo_Manutencao":         tipo_m,
+                "Criticidade":             crit if falha == 1 else "—",
+                "Boundary":                bound if falha == 1 else "—",
+                "Carga_Media_Pct":         float(carga),
+                "Temperatura_Media_C":     float(temp),
+                "Toneladas_Processadas":   float(tons),
+                "Custo_Reparo_BRL":        float(custo),
+                "Impacto_Producao_t":      0.0,
+                "Lucro_Cessante_BRL":      float(lucro),
+                "Tempo_Acumulado":         float(tempo_ac),
+                "Disponibilidade_Ciclo_Pct": round(tbf / (tbf + ttr + 1e-9) * 100, 1) if falha == 1 else 100.0,
+            }
+            st.session_state["manual_events"].append(evento)
+            st.success(f"✅ Evento #{n_evt} adicionado. Total: {len(st.session_state['manual_events'])} eventos.")
+
+    # ── Lista de eventos acumulados ───────────────────────────────────────────
+    events = st.session_state["manual_events"]
+    if events:
+        st.markdown(f"**{len(events)} evento(s) na fila:**")
+        preview_cols = ["Num_Evento", "Data_Evento", "TBF", "TTR", "Falha",
+                        "Subcomponente", "Modo_Falha", "Criticidade", "Boundary"]
+        df_preview = pd.DataFrame(events)[[c for c in preview_cols if c in pd.DataFrame(events).columns]]
+        st.dataframe(df_preview, use_container_width=True, height=180)
+
+        c_save, c_clear = st.columns(2)
+        with c_save:
+            if st.button("💾 Salvar na Base", type="primary", use_container_width=True):
+                try:
+                    with st.spinner("Salvando no banco..."):
+                        # Salva histórico rico (taxonomia completa)
+                        res_rich = api.history_save_rich(tag_eq, events, meta)
+                        # Salva também histórico slim para o pipeline de análise
+                        slim = [{"TBF": e["TBF"], "Tempo_Acumulado": e["Tempo_Acumulado"],
+                                 "Falha": e["Falha"]} for e in events]
+                        api.history_save(tag_eq, slim, meta)
+                    st.success(
+                        f"✅ {res_rich.get('total_registros', len(events))} registros "
+                        f"ISO 14224 salvos para TAG **{tag_eq}**."
+                    )
+                    st.session_state["manual_events"] = []
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"❌ Erro ao salvar: {e}")
+
+        with c_clear:
+            if st.button("🗑️ Limpar Lista", use_container_width=True):
+                st.session_state["manual_events"] = []
+                st.rerun()
+
+        _render_thresholds()
+
+        # Retorna os dados para análise imediata se o usuário quiser
+        if st.button("▶ Analisar Dados Inseridos", use_container_width=True):
+            slim = [{"TBF": e["TBF"], "Tempo_Acumulado": e["Tempo_Acumulado"],
+                     "Falha": e["Falha"]} for e in events]
+            return meta, slim, True, pd.DataFrame(events)
+    else:
+        st.info("Nenhum evento adicionado ainda. Preencha o formulário acima.")
 
     return meta, None, False, None
 
@@ -370,6 +657,29 @@ TBF_horas,status
 
     file_bytes = file.read()
 
+    # ── Validação ISO 14224 opcional ─────────────────────────────────────────
+    if st.checkbox("Validar conformidade ISO 14224", value=False,
+                   help="Verifica se o CSV segue a estrutura ISO 14224:2016 e exibe score de conformidade."):
+        with st.spinner("Validando conformidade ISO 14224..."):
+            try:
+                val = api.validate_iso14224(file_bytes, file.name)
+                score = val.get("score_conformidade", 0)
+                color = "green" if score >= 80 else "orange" if score >= 50 else "red"
+                st.markdown(
+                    f"**Score ISO 14224:** :{color}[{score:.0f}/100] — "
+                    + ("✅ Conforme" if val.get("conforme") else "⚠️ Não conforme")
+                )
+                st.caption(val.get("resumo", ""))
+                issues = val.get("issues", [])
+                if issues:
+                    with st.expander(f"Ver {len(issues)} issue(s) encontrada(s)"):
+                        for iss in issues:
+                            icon = "🔴" if iss["severidade"] == "erro" else "🟡"
+                            loc  = f" (linha {iss['linha']})" if iss.get("linha") else ""
+                            st.markdown(f"{icon} **{iss['campo']}**{loc}: {iss['descricao']}")
+            except Exception as e:
+                st.warning(f"Não foi possível validar ISO 14224: {e}")
+
     try:
         with st.spinner("Lendo colunas..."):
             info = api.get_csv_columns(file_bytes, file.name)
@@ -382,14 +692,14 @@ TBF_horas,status
     st.caption(f"Arquivo: {n_rows} linhas × {len(cols)} colunas detectadas")
 
     if n_rows < 100:
-        st.error(f"❌ Arquivo com apenas {n_rows} registros. Mínimo necessário: 100 registros para análise confiável.")
+        st.error(f"❌ Arquivo com apenas {n_rows} registros. Mínimo necessário: 100.")
         return meta, None, False, None
 
     if len(cols) < 2:
         st.error("❌ O arquivo precisa ter pelo menos 2 colunas: Tempo (TBF) e Status.")
         return meta, None, False, None
 
-    st.info(f"✅ Arquivo válido. Mapeie as colunas abaixo:")
+    st.info("✅ Arquivo válido. Mapeie as colunas abaixo:")
     t_col = st.selectbox("Coluna de Tempo (TBF — horas)", cols,
                          help="Selecione a coluna que contém o tempo entre falhas em horas")
     s_col = st.selectbox("Coluna de Status (Falha=1 / Censura=0)", cols,
@@ -406,12 +716,12 @@ TBF_horas,status
             with st.spinner("Processando CSV..."):
                 records = api.upload_csv(file_bytes, file.name, t_col, s_col)
             if not records:
-                st.error("❌ Nenhum registro válido encontrado. Verifique se as colunas mapeadas contêm valores numéricos.")
+                st.error("❌ Nenhum registro válido encontrado.")
                 return meta, None, False, None
             st.success(f"✅ {len(records)} registros processados com sucesso.")
             return meta, records, True, None
         except Exception as e:
-            st.error(f"❌ Erro ao processar: {str(e)}\n\nVerifique se os valores nas colunas selecionadas são numéricos.")
+            st.error(f"❌ Erro ao processar: {str(e)}")
             return meta, None, False, None
 
     return meta, None, False, None

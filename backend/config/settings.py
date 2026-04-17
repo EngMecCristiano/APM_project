@@ -1,9 +1,11 @@
 """
 APM Analytics — Configurações Centralizadas.
 Único ponto de verdade para paths, parâmetros de equipamentos e tunables de ML.
+Equipamentos são carregados de equipment_catalog.json — editável sem tocar no código.
 """
 from pathlib import Path
 import os
+import json
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 BASE_DIR   = Path(__file__).resolve().parent.parent
@@ -16,10 +18,6 @@ API_VERSION = "2.0.0"
 API_PREFIX  = "/api/v1"
 
 def _cors_origins() -> list[str]:
-    """Lê ALLOWED_ORIGINS do ambiente (separados por vírgula).
-    Em produção, defina ALLOWED_ORIGINS com a URL exata do frontend.
-    Em desenvolvimento, permite localhost por padrão.
-    """
     env_origins = os.getenv("ALLOWED_ORIGINS", "")
     if env_origins:
         return [o.strip() for o in env_origins.split(",") if o.strip()]
@@ -28,21 +26,47 @@ def _cors_origins() -> list[str]:
         "http://localhost:8502",
         "http://frontend:8501",
         "http://localhost:3000",
-        "*",  # fallback desenvolvimento local
+        "*",
     ]
 
 CORS_ORIGINS: list[str] = _cors_origins()
 
-# ─── Perfis de Equipamento (Weibull β, η) ─────────────────────────────────────
-EQUIPMENT_PROFILES: dict[str, dict[str, float]] = {
-    "Britador Cônico":          {"beta": 2.5, "eta": 1200.0},
-    "Peneira Vibratória":       {"beta": 3.0, "eta": 2000.0},
-    "Bomba de Polpa":           {"beta": 1.8, "eta":  800.0},
-    "Transportador de Correia": {"beta": 1.2, "eta": 3000.0},
-}
-DEFAULT_PROFILE: dict[str, float] = {"beta": 1.5, "eta": 1000.0}
+# ─── Catálogo de Equipamentos (ISO 14224) ─────────────────────────────────────
+_CATALOG_PATH = Path(__file__).parent / "equipment_catalog.json"
 
+def _load_catalog() -> dict:
+    try:
+        with open(_CATALOG_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {
+            "default_profile": {"beta": 1.5, "eta": 1000.0},
+            "default_operational_context": {
+                "throughput_t_per_h": 100.0, "temp_base_C": 45.0,
+                "temp_std_C": 10.0, "load_mean_pct": 75.0,
+                "load_std_pct": 12.0, "cost_per_ttr_h_brl": 5000.0,
+                "preco_producao_brl_t": 50.0,
+            },
+            "default_failure_scenarios": [],
+            "environmental_classifications": ["Ambiente Geral"],
+            "equipment": [],
+        }
+
+EQUIPMENT_CATALOG: dict = _load_catalog()
+
+# Estruturas derivadas — compatibilidade com código existente
+EQUIPMENT_PROFILES: dict[str, dict[str, float]] = {
+    eq["name"]: eq["weibull"]
+    for eq in EQUIPMENT_CATALOG.get("equipment", [])
+}
+DEFAULT_PROFILE: dict[str, float] = EQUIPMENT_CATALOG.get(
+    "default_profile", {"beta": 1.5, "eta": 1000.0}
+)
 EQUIPMENT_TYPES: list[str] = list(EQUIPMENT_PROFILES.keys())
+
+ENVIRONMENTAL_CLASSIFICATIONS: list[str] = EQUIPMENT_CATALOG.get(
+    "environmental_classifications", ["Ambiente Geral"]
+)
 
 # ─── Simulação ────────────────────────────────────────────────────────────────
 SIM_MIN_SAMPLES = 100
@@ -58,6 +82,6 @@ ANOMALY_CONTAMINATION = 0.1
 FORECAST_STEPS        = 5
 
 # ─── PMO ──────────────────────────────────────────────────────────────────────
-PMO_T_RANGE_LOW  = 0.05   # fração de η (limite inferior)
-PMO_T_RANGE_HIGH = 3.0    # fração de η (limite superior)
+PMO_T_RANGE_LOW  = 0.05
+PMO_T_RANGE_HIGH = 3.0
 PMO_CURVE_POINTS = 250

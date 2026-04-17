@@ -1,6 +1,7 @@
 """
 Router de Análise de Confiabilidade — /api/v1/analysis
-Endpoints: simulate, upload-data, fit, rul, crow-amsaa, audit
+Endpoints: simulate, upload-data, fit, rul, crow-amsaa, audit,
+           equipment-catalog, validate-iso14224
 """
 from __future__ import annotations
 
@@ -14,12 +15,167 @@ from backend.schemas.models import (
     DataRecord, FitResult,
     RULRequest, RULResult, CrowAMSAAResult,
     AuditRequest, AuditResult, DistributionParams,
+    EquipmentSummary, ISO14224ValidationResult, ISO14224Issue,
 )
 from backend.services.reliability_engine import ReliabilityEngine
 from backend.services.rich_simulator import RichSyntheticGenerator
+from backend.config.settings import EQUIPMENT_CATALOG
 
 router = APIRouter(prefix="/analysis", tags=["Análise de Confiabilidade"])
 engine = ReliabilityEngine()
+
+
+# ─── Catálogo de Equipamentos ISO 14224 ───────────────────────────────────────
+
+@router.get("/equipment-catalog", response_model=List[EquipmentSummary],
+            summary="Lista equipamentos disponíveis no catálogo ISO 14224")
+def get_equipment_catalog() -> List[EquipmentSummary]:
+    """Retorna todos os equipamentos do catálogo com seus parâmetros Weibull e setor."""
+    result = []
+    for eq in EQUIPMENT_CATALOG.get("equipment", []):
+        result.append(EquipmentSummary(
+            name=eq["name"],
+            sector=eq.get("sector", "Geral"),
+            iso14224_class=eq.get("iso14224_class", "Machinery"),
+            beta=eq["weibull"]["beta"],
+            eta=eq["weibull"]["eta"],
+            n_scenarios=len(eq.get("failure_scenarios", [])),
+        ))
+    return result
+
+
+# ─── Validador de Conformidade ISO 14224 ──────────────────────────────────────
+
+_ISO14224_REQUIRED = {"TBF", "Falha"}
+_ISO14224_RECOMMENDED = {
+    "Subcomponente", "Modo_Falha", "Causa_Raiz", "Mecanismo_Degradacao",
+    "Tipo_Manutencao", "Criticidade", "Boundary", "TTR",
+    "Data_Evento", "Data_Retorno_Operacao",
+}
+_CRITICIDADE_VALID = {"Alta", "Média", "Baixa", "—"}
+_BOUNDARY_VALID    = {"Interno", "Externo", "—"}
+_TIPO_MANUT_VALID  = {"Corretiva", "Corretiva Emergencial", "Preventiva", "Preditiva", "Censura"}
+
+
+@router.post("/validate-iso14224", response_model=ISO14224ValidationResult,
+             summary="Valida conformidade ISO 14224 de um dataset CSV")
+async def validate_iso14224(file: UploadFile = File(...)) -> ISO14224ValidationResult:
+    """
+    Verifica se o CSV uploaded segue a estrutura ISO 14224:
+    - Campos obrigatórios presentes (TBF, Falha)
+    - Campos recomendados presentes
+    - Valores válidos (Criticidade, Boundary, Tipo_Manutencao)
+    - TBF > 0, Falha ∈ {0, 1}, TTR ≥ 0
+    Retorna score de conformidade 0–100 e lista de issues.
+    """
+    content = await file.read()
+    try:
+        df = pd.read_csv(io.BytesIO(content))
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Erro ao ler CSV: {e}")
+
+    issues: List[ISO14224Issue] = []
+    cols = set(df.columns)
+
+    campos_presentes  = sorted(cols & (_ISO14224_REQUIRED | _ISO14224_RECOMMENDED))
+    campos_ausentes   = sorted((_ISO14224_REQUIRED | _ISO14224_RECOMMENDED) - cols)
+
+    # 1. Campos obrigatórios
+    for campo in _ISO14224_REQUIRED:
+        if campo not in cols:
+            issues.append(ISO14224Issue(
+                campo=campo, severidade="erro",
+                descricao=f"Campo obrigatório '{campo}' ausente.",
+            ))
+
+    # 2. Campos recomendados
+    for campo in _ISO14224_RECOMMENDED:
+        if campo not in cols:
+            issues.append(ISO14224Issue(
+                campo=campo, severidade="aviso",
+                descricao=f"Campo recomendado '{campo}' ausente (melhora rastreabilidade).",
+            ))
+
+    # 3. Validações de valores
+    if "TBF" in cols:
+        bad = df.index[df["TBF"].isna() | (df["TBF"] <= 0)].tolist()
+        for ln in bad[:10]:
+            issues.append(ISO14224Issue(
+                campo="TBF", linha=int(ln) + 2, severidade="erro",
+                descricao=f"TBF deve ser > 0 (linha {int(ln)+2}: {df.at[ln, 'TBF']}).",
+            ))
+
+    if "Falha" in cols:
+        bad = df.index[~df["Falha"].isin([0, 1])].tolist()
+        for ln in bad[:10]:
+            issues.append(ISO14224Issue(
+                campo="Falha", linha=int(ln) + 2, severidade="erro",
+                descricao=f"Falha deve ser 0 ou 1 (linha {int(ln)+2}: {df.at[ln, 'Falha']}).",
+            ))
+
+    if "TTR" in cols:
+        bad = df.index[df["TTR"].notna() & (df["TTR"] < 0)].tolist()
+        for ln in bad[:5]:
+            issues.append(ISO14224Issue(
+                campo="TTR", linha=int(ln) + 2, severidade="erro",
+                descricao=f"TTR não pode ser negativo (linha {int(ln)+2}).",
+            ))
+
+    if "Criticidade" in cols:
+        invalidos = df["Criticidade"].dropna()
+        invalidos = invalidos[~invalidos.isin(_CRITICIDADE_VALID)]
+        if not invalidos.empty:
+            issues.append(ISO14224Issue(
+                campo="Criticidade", severidade="aviso",
+                descricao=f"Valores não padronizados: {invalidos.unique().tolist()[:5]}. "
+                           f"Esperado: {sorted(_CRITICIDADE_VALID)}.",
+            ))
+
+    if "Boundary" in cols:
+        invalidos = df["Boundary"].dropna()
+        invalidos = invalidos[~invalidos.isin(_BOUNDARY_VALID)]
+        if not invalidos.empty:
+            issues.append(ISO14224Issue(
+                campo="Boundary", severidade="aviso",
+                descricao=f"Valores não padronizados: {invalidos.unique().tolist()[:5]}. "
+                           f"Esperado: {sorted(_BOUNDARY_VALID)}.",
+            ))
+
+    if "Tipo_Manutencao" in cols:
+        invalidos = df["Tipo_Manutencao"].dropna()
+        invalidos = invalidos[~invalidos.isin(_TIPO_MANUT_VALID)]
+        if not invalidos.empty:
+            issues.append(ISO14224Issue(
+                campo="Tipo_Manutencao", severidade="aviso",
+                descricao=f"Valores não padronizados: {invalidos.unique().tolist()[:5]}.",
+            ))
+
+    # Score: penaliza erros (−10 pt) e avisos de campos obrigatórios ausentes (−5 pt)
+    n_erros   = sum(1 for i in issues if i.severidade == "erro")
+    n_avisos  = sum(1 for i in issues if i.severidade == "aviso")
+    score = max(0.0, 100.0 - n_erros * 10.0 - n_avisos * 5.0)
+
+    n_falhas    = int(df["Falha"].sum()) if "Falha" in cols else 0
+    n_censurado = len(df) - n_falhas
+
+    conforme = (n_erros == 0)
+    resumo = (
+        f"Dataset com {len(df)} registros. Score ISO 14224: {score:.0f}/100. "
+        f"{n_erros} erro(s), {n_avisos} aviso(s). "
+        + ("Conforme." if conforme else "Não conforme — corrija os erros listados.")
+    )
+
+    return ISO14224ValidationResult(
+        conforme=conforme,
+        score_conformidade=score,
+        n_registros=len(df),
+        n_falhas=n_falhas,
+        n_censurados=n_censurado,
+        issues=issues,
+        campos_presentes=campos_presentes,
+        campos_ausentes=campos_ausentes,
+        resumo=resumo,
+    )
 
 
 @router.post("/simulate-rich", response_model=List[RichDataRecord],

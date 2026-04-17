@@ -1,0 +1,1170 @@
+{
+  "_info": "Catálogo de Equipamentos APM — ISO 14224:2016. Adicione novos equipamentos respeitando a estrutura existente. As probabilidades em failure_scenarios devem somar 1.0.",
+  "version": "2.0",
+  "standard": "ISO 14224:2016",
+
+  "default_profile": { "beta": 1.5, "eta": 1000.0 },
+
+  "default_operational_context": {
+    "throughput_t_per_h":   100.0,
+    "temp_base_C":           45.0,
+    "temp_std_C":            10.0,
+    "load_mean_pct":         75.0,
+    "load_std_pct":          12.0,
+    "cost_per_ttr_h_brl":  5000.0,
+    "preco_producao_brl_t":  50.0
+  },
+
+  "default_failure_scenarios": [
+    {
+      "subcomponente": "Componente Rotativo",
+      "modo_falha":    "Desgaste Mecânico",
+      "causa_raiz":    "Uso Normal / Fim de Vida",
+      "mecanismo":     "Abrasão",
+      "criticidade":   "Média",
+      "boundary":      "Interno",
+      "ttr_mu": 2.5, "ttr_sigma": 0.5, "cost_factor": 1.0, "prob": 0.35
+    },
+    {
+      "subcomponente": "Sistema de Vedação",
+      "modo_falha":    "Falha de Vedação",
+      "causa_raiz":    "Envelhecimento / Desgaste",
+      "mecanismo":     "Fadiga",
+      "criticidade":   "Média",
+      "boundary":      "Interno",
+      "ttr_mu": 2.0, "ttr_sigma": 0.4, "cost_factor": 1.2, "prob": 0.30
+    },
+    {
+      "subcomponente": "Mancal",
+      "modo_falha":    "Superaquecimento",
+      "causa_raiz":    "Lubrificação Deficiente",
+      "mecanismo":     "Fadiga Térmica",
+      "criticidade":   "Alta",
+      "boundary":      "Interno",
+      "ttr_mu": 3.0, "ttr_sigma": 0.5, "cost_factor": 2.0, "prob": 0.35
+    }
+  ],
+
+  "environmental_classifications": [
+    "Ambiente Geral",
+    "Área Classificada (Zona 1)",
+    "Área Classificada (Zona 2)",
+    "Offshore — Plataforma",
+    "Offshore — FPSO",
+    "Onshore — Deserto",
+    "Onshore — Tropical",
+    "Onshore — Ártico",
+    "Ambiente Corrosivo",
+    "Sala Limpa"
+  ],
+
+  "mecanismos_degradacao": [
+    "Abrasão", "Erosão", "Corrosão", "Fadiga", "Fadiga Térmica",
+    "Fadiga de Contato", "Fadiga por Flexão", "Fadiga por Torção",
+    "Erosão-Corrosão", "Corrosão-Abrasão", "Fadiga-Abrasão",
+    "Cavitação", "Desgaste", "Deformação Plástica", "Fratura Frágil",
+    "Penetração/Corte", "Sobrecarga Mecânica", "Acumulação",
+    "Contaminação", "Degradação Elétrica", "Degradação Térmica",
+    "Vibração Excessiva", "Desequilíbrio"
+  ],
+
+  "tipos_manutencao": [
+    "Corretiva", "Corretiva Emergencial", "Preventiva", "Preditiva", "Censura"
+  ],
+
+  "criticidades": ["Alta", "Média", "Baixa"],
+  "boundaries":   ["Interno", "Externo"],
+
+  "equipment": [
+
+    {
+      "name": "Britador Cônico",
+      "sector": "Mineração",
+      "iso14224_class": "Machinery",
+      "weibull": { "beta": 2.5, "eta": 1200.0 },
+      "operational_context": {
+        "throughput_t_per_h":   250.0,
+        "temp_base_C":           55.0,
+        "temp_std_C":            10.0,
+        "load_mean_pct":         78.0,
+        "load_std_pct":          12.0,
+        "cost_per_ttr_h_brl":  8500.0,
+        "preco_producao_brl_t":  45.0
+      },
+      "failure_scenarios": [
+        {
+          "subcomponente": "Manto",
+          "modo_falha":    "Desgaste Abrasivo do Manto",
+          "causa_raiz":    "Abrasividade do Minério",
+          "mecanismo":     "Abrasão",
+          "criticidade":   "Alta",
+          "boundary":      "Externo",
+          "ttr_mu": 3.2, "ttr_sigma": 0.5, "cost_factor": 2.5, "prob": 0.22
+        },
+        {
+          "subcomponente": "Côncavo",
+          "modo_falha":    "Desgaste Abrasivo do Côncavo",
+          "causa_raiz":    "Abrasividade do Minério / Granulometria Fora da Especificação",
+          "mecanismo":     "Abrasão",
+          "criticidade":   "Alta",
+          "boundary":      "Externo",
+          "ttr_mu": 3.5, "ttr_sigma": 0.5, "cost_factor": 2.8, "prob": 0.08
+        },
+        {
+          "subcomponente": "Mancal Radial",
+          "modo_falha":    "Superaquecimento do Mancal",
+          "causa_raiz":    "Contaminação do Lubrificante / Falha de Circulação",
+          "mecanismo":     "Fadiga Térmica",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 3.0, "ttr_sigma": 0.4, "cost_factor": 3.0, "prob": 0.12
+        },
+        {
+          "subcomponente": "Mancal de Empuxo",
+          "modo_falha":    "Desgaste do Mancal de Empuxo",
+          "causa_raiz":    "Sobrecarga Axial / Lubrificação Deficiente",
+          "mecanismo":     "Fadiga",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 3.5, "ttr_sigma": 0.5, "cost_factor": 3.5, "prob": 0.05
+        },
+        {
+          "subcomponente": "Pinhão",
+          "modo_falha":    "Fratura do Pinhão",
+          "causa_raiz":    "Fadiga de Material / Sobrecarga",
+          "mecanismo":     "Fadiga de Contato",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 4.0, "ttr_sigma": 0.6, "cost_factor": 4.0, "prob": 0.06
+        },
+        {
+          "subcomponente": "Coroa",
+          "modo_falha":    "Fratura / Desgaste da Coroa",
+          "causa_raiz":    "Fadiga de Material / Desalinhamento",
+          "mecanismo":     "Fadiga de Contato",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 4.5, "ttr_sigma": 0.6, "cost_factor": 5.0, "prob": 0.04
+        },
+        {
+          "subcomponente": "Eixo Vertical",
+          "modo_falha":    "Fratura do Eixo",
+          "causa_raiz":    "Alimentação Desequilibrada / Fadiga",
+          "mecanismo":     "Fadiga por Flexão",
+          "criticidade":   "Alta",
+          "boundary":      "Externo",
+          "ttr_mu": 4.5, "ttr_sigma": 0.5, "cost_factor": 5.0, "prob": 0.05
+        },
+        {
+          "subcomponente": "Excêntrico",
+          "modo_falha":    "Folga Excessiva no Excêntrico",
+          "causa_raiz":    "Desgaste Natural",
+          "mecanismo":     "Abrasão",
+          "criticidade":   "Média",
+          "boundary":      "Interno",
+          "ttr_mu": 2.5, "ttr_sigma": 0.4, "cost_factor": 1.5, "prob": 0.08
+        },
+        {
+          "subcomponente": "Vedação Hidráulica",
+          "modo_falha":    "Vazamento de Óleo",
+          "causa_raiz":    "Envelhecimento da Vedação / Pressão Excessiva",
+          "mecanismo":     "Fadiga",
+          "criticidade":   "Média",
+          "boundary":      "Interno",
+          "ttr_mu": 2.0, "ttr_sigma": 0.5, "cost_factor": 1.0, "prob": 0.07
+        },
+        {
+          "subcomponente": "Sistema de Lubrificação",
+          "modo_falha":    "Falha de Circulação de Óleo",
+          "causa_raiz":    "Entupimento do Filtro / Falha da Bomba de Lubrificação",
+          "mecanismo":     "Contaminação",
+          "criticidade":   "Média",
+          "boundary":      "Interno",
+          "ttr_mu": 1.8, "ttr_sigma": 0.4, "cost_factor": 0.8, "prob": 0.07
+        },
+        {
+          "subcomponente": "Câmara de Britagem",
+          "modo_falha":    "Bloqueio da Câmara (Tramp Iron)",
+          "causa_raiz":    "Fragmento Metálico / Material Não Britável",
+          "mecanismo":     "Sobrecarga Mecânica",
+          "criticidade":   "Alta",
+          "boundary":      "Externo",
+          "ttr_mu": 2.2, "ttr_sigma": 0.4, "cost_factor": 1.2, "prob": 0.07
+        },
+        {
+          "subcomponente": "Sistema Hidráulico de Ajuste CSS",
+          "modo_falha":    "Falha de Pressão Hidráulica",
+          "causa_raiz":    "Vazamento Interno / Falha de Bomba Hidráulica",
+          "mecanismo":     "Desgaste",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 3.0, "ttr_sigma": 0.5, "cost_factor": 2.0, "prob": 0.04
+        },
+        {
+          "subcomponente": "Motor Elétrico de Acionamento",
+          "modo_falha":    "Falha de Isolamento do Motor",
+          "causa_raiz":    "Sobrecarga Elétrica / Envelhecimento Térmico",
+          "mecanismo":     "Degradação Elétrica",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 4.0, "ttr_sigma": 0.6, "cost_factor": 3.5, "prob": 0.03
+        },
+        {
+          "subcomponente": "Correia / Acoplamento de Acionamento",
+          "modo_falha":    "Ruptura da Correia / Acoplamento",
+          "causa_raiz":    "Fadiga / Desalinhamento",
+          "mecanismo":     "Fadiga",
+          "criticidade":   "Média",
+          "boundary":      "Interno",
+          "ttr_mu": 1.5, "ttr_sigma": 0.3, "cost_factor": 0.6, "prob": 0.02
+        }
+      ]
+    },
+
+    {
+      "name": "Peneira Vibratória",
+      "sector": "Mineração",
+      "iso14224_class": "Machinery",
+      "weibull": { "beta": 3.0, "eta": 2000.0 },
+      "operational_context": {
+        "throughput_t_per_h":   350.0,
+        "temp_base_C":           42.0,
+        "temp_std_C":             7.0,
+        "load_mean_pct":         72.0,
+        "load_std_pct":          10.0,
+        "cost_per_ttr_h_brl":  4200.0,
+        "preco_producao_brl_t":  45.0
+      },
+      "failure_scenarios": [
+        {
+          "subcomponente": "Deck / Tela",
+          "modo_falha":    "Ruptura da Tela",
+          "causa_raiz":    "Fadiga por Vibração / Tela Subdimensionada",
+          "mecanismo":     "Fadiga",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 2.5, "ttr_sigma": 0.5, "cost_factor": 1.5, "prob": 0.28
+        },
+        {
+          "subcomponente": "Mancal Vibratório",
+          "modo_falha":    "Superaquecimento do Mancal",
+          "causa_raiz":    "Falha de Lubrificação / Sobrecarga Dinâmica",
+          "mecanismo":     "Fadiga Térmica",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 3.0, "ttr_sigma": 0.4, "cost_factor": 2.5, "prob": 0.14
+        },
+        {
+          "subcomponente": "Molas de Isolamento",
+          "modo_falha":    "Quebra de Mola",
+          "causa_raiz":    "Fadiga de Material / Corrosão",
+          "mecanismo":     "Fadiga",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 2.0, "ttr_sigma": 0.4, "cost_factor": 1.2, "prob": 0.16
+        },
+        {
+          "subcomponente": "Estrutura Metálica",
+          "modo_falha":    "Trinca Estrutural",
+          "causa_raiz":    "Fadiga por Vibração Ressonante / Defeito de Solda",
+          "mecanismo":     "Fadiga",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 3.5, "ttr_sigma": 0.5, "cost_factor": 3.0, "prob": 0.10
+        },
+        {
+          "subcomponente": "Excitador Vibratório",
+          "modo_falha":    "Vibração Irregular / Desbalanceamento",
+          "causa_raiz":    "Desequilíbrio de Massas / Desgaste de Pesos",
+          "mecanismo":     "Desequilíbrio",
+          "criticidade":   "Média",
+          "boundary":      "Interno",
+          "ttr_mu": 2.0, "ttr_sigma": 0.5, "cost_factor": 1.0, "prob": 0.09
+        },
+        {
+          "subcomponente": "Tensionador de Tela",
+          "modo_falha":    "Folga de Fixação da Tela",
+          "causa_raiz":    "Afrouxamento por Vibração / Desgaste de Parafusos",
+          "mecanismo":     "Desgaste",
+          "criticidade":   "Baixa",
+          "boundary":      "Interno",
+          "ttr_mu": 1.5, "ttr_sigma": 0.3, "cost_factor": 0.5, "prob": 0.09
+        },
+        {
+          "subcomponente": "Parafusos de Fixação",
+          "modo_falha":    "Afrouxamento / Fratura de Parafuso",
+          "causa_raiz":    "Vibração Excessiva / Torque Incorreto na Montagem",
+          "mecanismo":     "Fadiga",
+          "criticidade":   "Baixa",
+          "boundary":      "Interno",
+          "ttr_mu": 1.0, "ttr_sigma": 0.3, "cost_factor": 0.3, "prob": 0.06
+        },
+        {
+          "subcomponente": "Correia / Acoplamento de Transmissão",
+          "modo_falha":    "Ruptura da Correia",
+          "causa_raiz":    "Fadiga / Desalinhamento das Polias",
+          "mecanismo":     "Fadiga",
+          "criticidade":   "Média",
+          "boundary":      "Interno",
+          "ttr_mu": 1.5, "ttr_sigma": 0.3, "cost_factor": 0.6, "prob": 0.04
+        },
+        {
+          "subcomponente": "Motor Elétrico",
+          "modo_falha":    "Falha Elétrica do Motor",
+          "causa_raiz":    "Sobrecarga / Umidade / Envelhecimento",
+          "mecanismo":     "Degradação Elétrica",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 3.5, "ttr_sigma": 0.6, "cost_factor": 3.0, "prob": 0.03
+        },
+        {
+          "subcomponente": "Feeding Box / Caixa de Alimentação",
+          "modo_falha":    "Desgaste Excessivo da Caixa",
+          "causa_raiz":    "Impacto do Material / Abrasividade",
+          "mecanismo":     "Abrasão",
+          "criticidade":   "Baixa",
+          "boundary":      "Externo",
+          "ttr_mu": 2.0, "ttr_sigma": 0.4, "cost_factor": 0.8, "prob": 0.01
+        }
+      ]
+    },
+
+    {
+      "name": "Bomba de Polpa",
+      "sector": "Mineração",
+      "iso14224_class": "Pump",
+      "weibull": { "beta": 1.8, "eta": 800.0 },
+      "operational_context": {
+        "throughput_t_per_h":   120.0,
+        "temp_base_C":           48.0,
+        "temp_std_C":            12.0,
+        "load_mean_pct":         82.0,
+        "load_std_pct":          10.0,
+        "cost_per_ttr_h_brl":  5500.0,
+        "preco_producao_brl_t":  45.0
+      },
+      "failure_scenarios": [
+        {
+          "subcomponente": "Impeller / Rotor",
+          "modo_falha":    "Erosão Excessiva do Impeller",
+          "causa_raiz":    "Alta Concentração de Sólidos / Abrasividade da Polpa",
+          "mecanismo":     "Erosão-Corrosão",
+          "criticidade":   "Alta",
+          "boundary":      "Externo",
+          "ttr_mu": 2.8, "ttr_sigma": 0.5, "cost_factor": 2.0, "prob": 0.22
+        },
+        {
+          "subcomponente": "Vedação Mecânica",
+          "modo_falha":    "Falha da Vedação Mecânica",
+          "causa_raiz":    "Desgaste Natural / pH Ácido / Partícula Abrasiva",
+          "mecanismo":     "Corrosão-Abrasão",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 2.2, "ttr_sigma": 0.4, "cost_factor": 1.5, "prob": 0.20
+        },
+        {
+          "subcomponente": "Liner / Voluta",
+          "modo_falha":    "Desgaste do Liner",
+          "causa_raiz":    "Concentração de Sólidos Alta / Material Grosseiro",
+          "mecanismo":     "Abrasão",
+          "criticidade":   "Média",
+          "boundary":      "Externo",
+          "ttr_mu": 2.5, "ttr_sigma": 0.4, "cost_factor": 1.5, "prob": 0.16
+        },
+        {
+          "subcomponente": "Caixa de Sucção",
+          "modo_falha":    "Cavitação",
+          "causa_raiz":    "NPSH Insuficiente / Operação Fora do BEP",
+          "mecanismo":     "Cavitação",
+          "criticidade":   "Alta",
+          "boundary":      "Externo",
+          "ttr_mu": 3.2, "ttr_sigma": 0.5, "cost_factor": 2.5, "prob": 0.10
+        },
+        {
+          "subcomponente": "Duto / Tubulação de Sucção",
+          "modo_falha":    "Entupimento da Sucção",
+          "causa_raiz":    "Partícula Acima do D_max / Decantação de Sólidos",
+          "mecanismo":     "Acumulação",
+          "criticidade":   "Média",
+          "boundary":      "Externo",
+          "ttr_mu": 1.5, "ttr_sigma": 0.3, "cost_factor": 0.5, "prob": 0.08
+        },
+        {
+          "subcomponente": "Mancal",
+          "modo_falha":    "Superaquecimento do Mancal",
+          "causa_raiz":    "Desalinhamento / Lubrificação Deficiente",
+          "mecanismo":     "Fadiga Térmica",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 3.0, "ttr_sigma": 0.4, "cost_factor": 2.0, "prob": 0.09
+        },
+        {
+          "subcomponente": "Eixo",
+          "modo_falha":    "Fratura do Eixo",
+          "causa_raiz":    "Fadiga por Flexão / Corrosão-Fadiga",
+          "mecanismo":     "Fadiga por Flexão",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 4.0, "ttr_sigma": 0.6, "cost_factor": 4.5, "prob": 0.04
+        },
+        {
+          "subcomponente": "Acoplamento",
+          "modo_falha":    "Desalinhamento / Desgaste do Acoplamento",
+          "causa_raiz":    "Montagem Incorreta / Dilatação Térmica",
+          "mecanismo":     "Fadiga Mecânica",
+          "criticidade":   "Média",
+          "boundary":      "Interno",
+          "ttr_mu": 2.0, "ttr_sigma": 0.4, "cost_factor": 1.0, "prob": 0.04
+        },
+        {
+          "subcomponente": "Prensa de Gaxeta",
+          "modo_falha":    "Vazamento pela Gaxeta",
+          "causa_raiz":    "Desgaste da Gaxeta / Pressão Excessiva",
+          "mecanismo":     "Desgaste",
+          "criticidade":   "Baixa",
+          "boundary":      "Interno",
+          "ttr_mu": 1.2, "ttr_sigma": 0.3, "cost_factor": 0.4, "prob": 0.03
+        },
+        {
+          "subcomponente": "Motor Elétrico",
+          "modo_falha":    "Falha Elétrica do Motor",
+          "causa_raiz":    "Sobrecarga / Umidade / Envelhecimento",
+          "mecanismo":     "Degradação Elétrica",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 4.0, "ttr_sigma": 0.6, "cost_factor": 3.5, "prob": 0.02
+        },
+        {
+          "subcomponente": "Sistema de Resfriamento de Vedação",
+          "modo_falha":    "Falha do Resfriamento",
+          "causa_raiz":    "Entupimento / Falha da Bomba de Selagem",
+          "mecanismo":     "Acumulação",
+          "criticidade":   "Média",
+          "boundary":      "Interno",
+          "ttr_mu": 2.0, "ttr_sigma": 0.4, "cost_factor": 0.8, "prob": 0.02
+        }
+      ]
+    },
+
+    {
+      "name": "Transportador de Correia",
+      "sector": "Mineração",
+      "iso14224_class": "Machinery",
+      "weibull": { "beta": 1.2, "eta": 3000.0 },
+      "operational_context": {
+        "throughput_t_per_h":   600.0,
+        "temp_base_C":           35.0,
+        "temp_std_C":             8.0,
+        "load_mean_pct":         70.0,
+        "load_std_pct":          12.0,
+        "cost_per_ttr_h_brl":  3800.0,
+        "preco_producao_brl_t":  45.0
+      },
+      "failure_scenarios": [
+        {
+          "subcomponente": "Correia",
+          "modo_falha":    "Rasgamento Longitudinal da Correia",
+          "causa_raiz":    "Material Cortante / Objeto Aguçado no Produto",
+          "mecanismo":     "Penetração/Corte",
+          "criticidade":   "Alta",
+          "boundary":      "Externo",
+          "ttr_mu": 3.5, "ttr_sigma": 0.5, "cost_factor": 3.0, "prob": 0.18
+        },
+        {
+          "subcomponente": "Rolo de Carga / Retorno",
+          "modo_falha":    "Quebra / Travamento de Rolo",
+          "causa_raiz":    "Desgaste Natural / Acúmulo de Finos / Falta de Lubrificação",
+          "mecanismo":     "Fadiga-Abrasão",
+          "criticidade":   "Média",
+          "boundary":      "Interno",
+          "ttr_mu": 1.5, "ttr_sigma": 0.4, "cost_factor": 0.6, "prob": 0.18
+        },
+        {
+          "subcomponente": "Correia",
+          "modo_falha":    "Desalinhamento da Correia",
+          "causa_raiz":    "Carregamento Assimétrico / Rolos Desalinhados",
+          "mecanismo":     "Deformação",
+          "criticidade":   "Média",
+          "boundary":      "Externo",
+          "ttr_mu": 1.5, "ttr_sigma": 0.3, "cost_factor": 0.5, "prob": 0.14
+        },
+        {
+          "subcomponente": "Correia",
+          "modo_falha":    "Emenda Rompida",
+          "causa_raiz":    "Fadiga da Emenda / Má Execução da Vulcanização",
+          "mecanismo":     "Fadiga",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 4.0, "ttr_sigma": 0.5, "cost_factor": 3.5, "prob": 0.05
+        },
+        {
+          "subcomponente": "Raspador de Correia",
+          "modo_falha":    "Desgaste do Raspador",
+          "causa_raiz":    "Abrasividade do Material / Pressão Excessiva",
+          "mecanismo":     "Abrasão",
+          "criticidade":   "Baixa",
+          "boundary":      "Interno",
+          "ttr_mu": 1.2, "ttr_sigma": 0.3, "cost_factor": 0.4, "prob": 0.12
+        },
+        {
+          "subcomponente": "Redutor de Velocidade",
+          "modo_falha":    "Falha de Engrenagem do Redutor",
+          "causa_raiz":    "Sobrecarga / Lubrificação Deficiente / Fadiga",
+          "mecanismo":     "Fadiga de Contato",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 4.0, "ttr_sigma": 0.5, "cost_factor": 4.0, "prob": 0.09
+        },
+        {
+          "subcomponente": "Tambor de Acionamento",
+          "modo_falha":    "Desgaste do Revestimento do Tambor",
+          "causa_raiz":    "Deslizamento da Correia / Revestimento Inadequado",
+          "mecanismo":     "Abrasão",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 3.0, "ttr_sigma": 0.5, "cost_factor": 2.0, "prob": 0.09
+        },
+        {
+          "subcomponente": "Mancal de Tambor",
+          "modo_falha":    "Superaquecimento do Mancal",
+          "causa_raiz":    "Lubrificação Deficiente / Desalinhamento",
+          "mecanismo":     "Fadiga Térmica",
+          "criticidade":   "Média",
+          "boundary":      "Interno",
+          "ttr_mu": 2.2, "ttr_sigma": 0.4, "cost_factor": 1.2, "prob": 0.07
+        },
+        {
+          "subcomponente": "Motor de Acionamento",
+          "modo_falha":    "Falha Elétrica do Motor",
+          "causa_raiz":    "Sobrecarga / Umidade / Envelhecimento do Isolamento",
+          "mecanismo":     "Degradação Elétrica",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 4.0, "ttr_sigma": 0.6, "cost_factor": 3.5, "prob": 0.03
+        },
+        {
+          "subcomponente": "Guia Lateral / Saia de Vento",
+          "modo_falha":    "Desgaste das Guias",
+          "causa_raiz":    "Contato com a Correia / Abrasividade do Material",
+          "mecanismo":     "Abrasão",
+          "criticidade":   "Baixa",
+          "boundary":      "Interno",
+          "ttr_mu": 1.2, "ttr_sigma": 0.3, "cost_factor": 0.3, "prob": 0.03
+        },
+        {
+          "subcomponente": "Chute de Transferência",
+          "modo_falha":    "Entupimento do Chute",
+          "causa_raiz":    "Material Úmido / Granulometria Fora da Faixa",
+          "mecanismo":     "Acumulação",
+          "criticidade":   "Média",
+          "boundary":      "Externo",
+          "ttr_mu": 1.0, "ttr_sigma": 0.3, "cost_factor": 0.4, "prob": 0.02
+        }
+      ]
+    },
+
+    {
+      "name": "Compressor Centrífugo",
+      "sector": "Petróleo & Gás",
+      "iso14224_class": "Compressor",
+      "weibull": { "beta": 2.0, "eta": 2500.0 },
+      "operational_context": {
+        "throughput_t_per_h":    80.0,
+        "temp_base_C":           60.0,
+        "temp_std_C":            15.0,
+        "load_mean_pct":         80.0,
+        "load_std_pct":          10.0,
+        "cost_per_ttr_h_brl": 15000.0,
+        "preco_producao_brl_t":  200.0
+      },
+      "failure_scenarios": [
+        {
+          "subcomponente": "Impeller",
+          "modo_falha":    "Erosão do Impeller por Partículas",
+          "causa_raiz":    "Contaminação do Gás de Processo / Líquido Arrastado",
+          "mecanismo":     "Erosão",
+          "criticidade":   "Alta",
+          "boundary":      "Externo",
+          "ttr_mu": 4.0, "ttr_sigma": 0.5, "cost_factor": 3.5, "prob": 0.20
+        },
+        {
+          "subcomponente": "Vedação Seca de Gás (DGS)",
+          "modo_falha":    "Vazamento da Vedação Seca",
+          "causa_raiz":    "Contaminação por Líquido / Degradação Térmica / Vibração",
+          "mecanismo":     "Desgaste",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 3.5, "ttr_sigma": 0.5, "cost_factor": 4.0, "prob": 0.19
+        },
+        {
+          "subcomponente": "Mancal Magnético / Radial",
+          "modo_falha":    "Falha do Mancal",
+          "causa_raiz":    "Falha do Sistema de Controle / Sobrecarga Dinâmica",
+          "mecanismo":     "Fadiga",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 5.0, "ttr_sigma": 0.6, "cost_factor": 5.0, "prob": 0.15
+        },
+        {
+          "subcomponente": "Rotor",
+          "modo_falha":    "Surge (Instabilidade de Fluxo)",
+          "causa_raiz":    "Operação Fora da Curva de Desempenho / Falha Anti-Surge",
+          "mecanismo":     "Vibração Excessiva",
+          "criticidade":   "Alta",
+          "boundary":      "Externo",
+          "ttr_mu": 3.0, "ttr_sigma": 0.4, "cost_factor": 2.0, "prob": 0.12
+        },
+        {
+          "subcomponente": "Acoplamento",
+          "modo_falha":    "Fratura do Acoplamento",
+          "causa_raiz":    "Desalinhamento / Fadiga por Torção",
+          "mecanismo":     "Fadiga por Torção",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 4.5, "ttr_sigma": 0.6, "cost_factor": 3.0, "prob": 0.09
+        },
+        {
+          "subcomponente": "Sistema Anti-Surge",
+          "modo_falha":    "Falha da Válvula Anti-Surge",
+          "causa_raiz":    "Desgaste do Atuador / Falha de Instrumentação",
+          "mecanismo":     "Desgaste",
+          "criticidade":   "Média",
+          "boundary":      "Interno",
+          "ttr_mu": 2.5, "ttr_sigma": 0.4, "cost_factor": 1.5, "prob": 0.07
+        },
+        {
+          "subcomponente": "Sistema de Lubrificação",
+          "modo_falha":    "Falha de Circulação de Óleo",
+          "causa_raiz":    "Falha da Bomba de Lubrificação / Entupimento do Filtro",
+          "mecanismo":     "Contaminação",
+          "criticidade":   "Média",
+          "boundary":      "Interno",
+          "ttr_mu": 2.5, "ttr_sigma": 0.4, "cost_factor": 1.5, "prob": 0.07
+        },
+        {
+          "subcomponente": "Intercooler / Aftercooler",
+          "modo_falha":    "Fouling / Incrustação no Resfriador",
+          "causa_raiz":    "Qualidade da Água de Resfriamento / Deposição",
+          "mecanismo":     "Acumulação",
+          "criticidade":   "Média",
+          "boundary":      "Externo",
+          "ttr_mu": 3.0, "ttr_sigma": 0.5, "cost_factor": 1.5, "prob": 0.05
+        },
+        {
+          "subcomponente": "Carcaça / Difusor",
+          "modo_falha":    "Erosão Interna da Carcaça",
+          "causa_raiz":    "Gás Corrosivo (H2S, CO2) / Partículas",
+          "mecanismo":     "Erosão-Corrosão",
+          "criticidade":   "Média",
+          "boundary":      "Externo",
+          "ttr_mu": 4.0, "ttr_sigma": 0.6, "cost_factor": 2.0, "prob": 0.04
+        },
+        {
+          "subcomponente": "Instrumentação / Sistema de Controle",
+          "modo_falha":    "Trip Espúrio / Falha de Sensor",
+          "causa_raiz":    "Falha Eletrônica / Calibração Incorreta",
+          "mecanismo":     "Degradação Elétrica",
+          "criticidade":   "Baixa",
+          "boundary":      "Interno",
+          "ttr_mu": 1.5, "ttr_sigma": 0.3, "cost_factor": 0.5, "prob": 0.02
+        }
+      ]
+    },
+
+    {
+      "name": "Bomba Centrífuga",
+      "sector": "Petróleo & Gás",
+      "iso14224_class": "Pump",
+      "weibull": { "beta": 1.8, "eta": 1800.0 },
+      "operational_context": {
+        "throughput_t_per_h":   150.0,
+        "temp_base_C":           55.0,
+        "temp_std_C":            12.0,
+        "load_mean_pct":         78.0,
+        "load_std_pct":          10.0,
+        "cost_per_ttr_h_brl": 10000.0,
+        "preco_producao_brl_t":  180.0
+      },
+      "failure_scenarios": [
+        {
+          "subcomponente": "Vedação Mecânica",
+          "modo_falha":    "Falha da Vedação Mecânica",
+          "causa_raiz":    "Desgaste / Fluido Abrasivo / pH Agressivo",
+          "mecanismo":     "Desgaste-Corrosão",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 2.5, "ttr_sigma": 0.5, "cost_factor": 2.0, "prob": 0.26
+        },
+        {
+          "subcomponente": "Impeller",
+          "modo_falha":    "Erosão / Corrosão do Impeller",
+          "causa_raiz":    "Fluido Corrosivo (H2S, CO2) / Partículas Sólidas",
+          "mecanismo":     "Corrosão",
+          "criticidade":   "Alta",
+          "boundary":      "Externo",
+          "ttr_mu": 3.0, "ttr_sigma": 0.5, "cost_factor": 2.5, "prob": 0.20
+        },
+        {
+          "subcomponente": "Mancal Radial / Axial",
+          "modo_falha":    "Superaquecimento do Mancal",
+          "causa_raiz":    "Lubrificação Insuficiente / Desalinhamento",
+          "mecanismo":     "Fadiga Térmica",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 3.2, "ttr_sigma": 0.4, "cost_factor": 2.5, "prob": 0.16
+        },
+        {
+          "subcomponente": "Corpo da Bomba",
+          "modo_falha":    "Cavitação",
+          "causa_raiz":    "NPSH Insuficiente / Operação Fora do BEP",
+          "mecanismo":     "Cavitação",
+          "criticidade":   "Alta",
+          "boundary":      "Externo",
+          "ttr_mu": 4.0, "ttr_sigma": 0.5, "cost_factor": 3.5, "prob": 0.12
+        },
+        {
+          "subcomponente": "Acoplamento",
+          "modo_falha":    "Desalinhamento / Desgaste do Acoplamento",
+          "causa_raiz":    "Dilatação Térmica / Instalação Incorreta",
+          "mecanismo":     "Fadiga Mecânica",
+          "criticidade":   "Média",
+          "boundary":      "Interno",
+          "ttr_mu": 2.0, "ttr_sigma": 0.4, "cost_factor": 1.0, "prob": 0.10
+        },
+        {
+          "subcomponente": "Gaxeta / Empanque",
+          "modo_falha":    "Vazamento pela Gaxeta",
+          "causa_raiz":    "Desgaste / Pressão Excessiva",
+          "mecanismo":     "Desgaste",
+          "criticidade":   "Baixa",
+          "boundary":      "Interno",
+          "ttr_mu": 1.5, "ttr_sigma": 0.3, "cost_factor": 0.6, "prob": 0.06
+        },
+        {
+          "subcomponente": "Eixo",
+          "modo_falha":    "Fratura do Eixo",
+          "causa_raiz":    "Fadiga por Flexão / Corrosão-Fadiga",
+          "mecanismo":     "Fadiga por Flexão",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 5.0, "ttr_sigma": 0.6, "cost_factor": 5.0, "prob": 0.05
+        },
+        {
+          "subcomponente": "Motor Elétrico",
+          "modo_falha":    "Falha de Isolamento do Motor",
+          "causa_raiz":    "Sobrecarga / Umidade / Envelhecimento",
+          "mecanismo":     "Degradação Elétrica",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 4.0, "ttr_sigma": 0.6, "cost_factor": 3.5, "prob": 0.03
+        },
+        {
+          "subcomponente": "Sistema de Resfriamento de Vedação",
+          "modo_falha":    "Falha do Flush Plan",
+          "causa_raiz":    "Entupimento do Orifício / Falha da Bomba Auxiliar",
+          "mecanismo":     "Acumulação",
+          "criticidade":   "Baixa",
+          "boundary":      "Interno",
+          "ttr_mu": 2.0, "ttr_sigma": 0.4, "cost_factor": 0.8, "prob": 0.02
+        }
+      ]
+    },
+
+    {
+      "name": "Turbina a Vapor",
+      "sector": "Geração de Energia",
+      "iso14224_class": "Turbine",
+      "weibull": { "beta": 1.5, "eta": 5000.0 },
+      "operational_context": {
+        "throughput_t_per_h":   500.0,
+        "temp_base_C":          250.0,
+        "temp_std_C":            20.0,
+        "load_mean_pct":         85.0,
+        "load_std_pct":           8.0,
+        "cost_per_ttr_h_brl": 25000.0,
+        "preco_producao_brl_t":  300.0
+      },
+      "failure_scenarios": [
+        {
+          "subcomponente": "Palhetas do Estátor / Rotor",
+          "modo_falha":    "Erosão por Vapor Úmido",
+          "causa_raiz":    "Qualidade do Vapor / Gotas de Água / Incrustação",
+          "mecanismo":     "Erosão",
+          "criticidade":   "Alta",
+          "boundary":      "Externo",
+          "ttr_mu": 5.0, "ttr_sigma": 0.5, "cost_factor": 5.0, "prob": 0.24
+        },
+        {
+          "subcomponente": "Vedações de Labirinto",
+          "modo_falha":    "Vazamento de Vapor pelas Vedações",
+          "causa_raiz":    "Desgaste / Vibração Excessiva / Expansão Térmica",
+          "mecanismo":     "Desgaste",
+          "criticidade":   "Média",
+          "boundary":      "Interno",
+          "ttr_mu": 3.0, "ttr_sigma": 0.5, "cost_factor": 2.0, "prob": 0.18
+        },
+        {
+          "subcomponente": "Mancal de Empuxo",
+          "modo_falha":    "Falha do Mancal de Empuxo",
+          "causa_raiz":    "Carregamento Axial Excessivo / Lubrificação Deficiente",
+          "mecanismo":     "Fadiga",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 6.0, "ttr_sigma": 0.6, "cost_factor": 6.0, "prob": 0.14
+        },
+        {
+          "subcomponente": "Válvula de Controle de Vapor",
+          "modo_falha":    "Falha de Abertura / Fechamento",
+          "causa_raiz":    "Incrustação de Óxidos / Desgaste do Atuador",
+          "mecanismo":     "Degradação Mecânica",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 4.0, "ttr_sigma": 0.5, "cost_factor": 3.0, "prob": 0.14
+        },
+        {
+          "subcomponente": "Sistema de Óleo de Controle / Lubrificação",
+          "modo_falha":    "Contaminação do Óleo",
+          "causa_raiz":    "Falha do Filtro / Degradação / Entrada de Água",
+          "mecanismo":     "Contaminação",
+          "criticidade":   "Média",
+          "boundary":      "Interno",
+          "ttr_mu": 2.5, "ttr_sigma": 0.4, "cost_factor": 1.5, "prob": 0.10
+        },
+        {
+          "subcomponente": "Regulador de Velocidade (Governor)",
+          "modo_falha":    "Falha de Controle de Velocidade",
+          "causa_raiz":    "Falha Eletrônica / Desgaste Mecânico do Governor",
+          "mecanismo":     "Degradação Elétrica",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 3.0, "ttr_sigma": 0.5, "cost_factor": 2.0, "prob": 0.08
+        },
+        {
+          "subcomponente": "Caixa de Engrenagens / Redutor",
+          "modo_falha":    "Falha de Engrenagem",
+          "causa_raiz":    "Fadiga de Contato / Lubrificação Deficiente",
+          "mecanismo":     "Fadiga de Contato",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 5.0, "ttr_sigma": 0.5, "cost_factor": 4.0, "prob": 0.06
+        },
+        {
+          "subcomponente": "Sistema de Selagem de Vapor",
+          "modo_falha":    "Falha do Sistema de Selagem",
+          "causa_raiz":    "Pressão de Selagem Inadequada / Condensado",
+          "mecanismo":     "Degradação Mecânica",
+          "criticidade":   "Média",
+          "boundary":      "Interno",
+          "ttr_mu": 3.0, "ttr_sigma": 0.4, "cost_factor": 1.5, "prob": 0.04
+        },
+        {
+          "subcomponente": "Instrumentação / Proteções",
+          "modo_falha":    "Trip Espúrio / Falha de Sensor",
+          "causa_raiz":    "Falha Eletrônica / Calibração Incorreta",
+          "mecanismo":     "Degradação Elétrica",
+          "criticidade":   "Baixa",
+          "boundary":      "Interno",
+          "ttr_mu": 1.5, "ttr_sigma": 0.3, "cost_factor": 0.5, "prob": 0.02
+        }
+      ]
+    },
+
+    {
+      "name": "Motor Elétrico",
+      "sector": "Indústria Geral",
+      "iso14224_class": "Electric Motor",
+      "weibull": { "beta": 1.2, "eta": 8000.0 },
+      "operational_context": {
+        "throughput_t_per_h":    50.0,
+        "temp_base_C":           50.0,
+        "temp_std_C":            10.0,
+        "load_mean_pct":         75.0,
+        "load_std_pct":          12.0,
+        "cost_per_ttr_h_brl":  4000.0,
+        "preco_producao_brl_t":  80.0
+      },
+      "failure_scenarios": [
+        {
+          "subcomponente": "Enrolamento do Estátor",
+          "modo_falha":    "Falha de Isolamento (Fase-Terra / Fase-Fase)",
+          "causa_raiz":    "Envelhecimento Térmico / Sobrecarga / Umidade",
+          "mecanismo":     "Degradação Elétrica",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 4.0, "ttr_sigma": 0.6, "cost_factor": 3.5, "prob": 0.26
+        },
+        {
+          "subcomponente": "Mancal DE / NDE",
+          "modo_falha":    "Falha de Mancal",
+          "causa_raiz":    "Lubrificação Deficiente / Correntes Parasitas / Contaminação",
+          "mecanismo":     "Fadiga",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 3.0, "ttr_sigma": 0.5, "cost_factor": 2.5, "prob": 0.24
+        },
+        {
+          "subcomponente": "Rotor (Barra e Anel de Curto-Circuito)",
+          "modo_falha":    "Barra Quebrada do Rotor",
+          "causa_raiz":    "Fadiga por Partida Frequente / Sobrecarga",
+          "mecanismo":     "Fadiga Mecânica",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 5.0, "ttr_sigma": 0.5, "cost_factor": 4.0, "prob": 0.16
+        },
+        {
+          "subcomponente": "Sistema de Ventilação / Resfriamento",
+          "modo_falha":    "Superaquecimento por Ventilação Insuficiente",
+          "causa_raiz":    "Obstrução do Ventilador / Ambiente Quente / Alta Carga",
+          "mecanismo":     "Degradação Térmica",
+          "criticidade":   "Média",
+          "boundary":      "Externo",
+          "ttr_mu": 2.0, "ttr_sigma": 0.4, "cost_factor": 1.0, "prob": 0.12
+        },
+        {
+          "subcomponente": "Caixa de Terminais / Conexões",
+          "modo_falha":    "Falha de Conexão / Oxidação de Terminal",
+          "causa_raiz":    "Vibração / Oxidação / Torque de Aperto Incorreto",
+          "mecanismo":     "Degradação Elétrica",
+          "criticidade":   "Média",
+          "boundary":      "Interno",
+          "ttr_mu": 1.5, "ttr_sigma": 0.3, "cost_factor": 0.5, "prob": 0.09
+        },
+        {
+          "subcomponente": "Encoder / Sensor de Velocidade",
+          "modo_falha":    "Falha do Encoder",
+          "causa_raiz":    "Vibração / Umidade / Desgaste",
+          "mecanismo":     "Fadiga",
+          "criticidade":   "Baixa",
+          "boundary":      "Interno",
+          "ttr_mu": 2.0, "ttr_sigma": 0.4, "cost_factor": 0.8, "prob": 0.05
+        },
+        {
+          "subcomponente": "Freio Eletromagnético",
+          "modo_falha":    "Desgaste das Pastilhas de Freio",
+          "causa_raiz":    "Frenagens Frequentes / Material das Pastilhas",
+          "mecanismo":     "Desgaste",
+          "criticidade":   "Baixa",
+          "boundary":      "Interno",
+          "ttr_mu": 1.5, "ttr_sigma": 0.3, "cost_factor": 0.4, "prob": 0.04
+        },
+        {
+          "subcomponente": "Isolação por Condensação Interna",
+          "modo_falha":    "Falha de Isolamento por Umidade",
+          "causa_raiz":    "Ciclos Térmicos / Falha do Resistor de Aquecimento",
+          "mecanismo":     "Degradação Elétrica",
+          "criticidade":   "Média",
+          "boundary":      "Externo",
+          "ttr_mu": 3.0, "ttr_sigma": 0.5, "cost_factor": 1.5, "prob": 0.03
+        },
+        {
+          "subcomponente": "Rotor",
+          "modo_falha":    "Vibração por Desbalanceamento do Rotor",
+          "causa_raiz":    "Perda de Massa / Depósito Assimétrico",
+          "mecanismo":     "Desequilíbrio",
+          "criticidade":   "Média",
+          "boundary":      "Interno",
+          "ttr_mu": 2.0, "ttr_sigma": 0.4, "cost_factor": 1.0, "prob": 0.01
+        }
+      ]
+    },
+
+    {
+      "name": "Válvula de Controle",
+      "sector": "Petróleo & Gás",
+      "iso14224_class": "Valve",
+      "weibull": { "beta": 1.4, "eta": 3000.0 },
+      "operational_context": {
+        "throughput_t_per_h":    30.0,
+        "temp_base_C":           50.0,
+        "temp_std_C":            15.0,
+        "load_mean_pct":         70.0,
+        "load_std_pct":          15.0,
+        "cost_per_ttr_h_brl":  6000.0,
+        "preco_producao_brl_t":  150.0
+      },
+      "failure_scenarios": [
+        {
+          "subcomponente": "Atuador Pneumático",
+          "modo_falha":    "Falha de Atuação (Abertura / Fechamento)",
+          "causa_raiz":    "Falha do Sistema de Ar / Diafragma Furado / Desgaste",
+          "mecanismo":     "Fadiga Mecânica",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 2.5, "ttr_sigma": 0.5, "cost_factor": 2.0, "prob": 0.26
+        },
+        {
+          "subcomponente": "Haste / Plug",
+          "modo_falha":    "Corrosão / Erosão da Haste",
+          "causa_raiz":    "Fluido Corrosivo (H2S, CO2) / Erosão por Partículas",
+          "mecanismo":     "Corrosão",
+          "criticidade":   "Alta",
+          "boundary":      "Externo",
+          "ttr_mu": 3.5, "ttr_sigma": 0.5, "cost_factor": 3.0, "prob": 0.20
+        },
+        {
+          "subcomponente": "Assento / Plug",
+          "modo_falha":    "Vazamento Interno (Across-Seat)",
+          "causa_raiz":    "Erosão / Partículas no Fluido / Corrosão do Assento",
+          "mecanismo":     "Erosão",
+          "criticidade":   "Média",
+          "boundary":      "Externo",
+          "ttr_mu": 3.0, "ttr_sigma": 0.5, "cost_factor": 2.5, "prob": 0.18
+        },
+        {
+          "subcomponente": "Posicionador",
+          "modo_falha":    "Desvio de Posição / Falha de Sinal",
+          "causa_raiz":    "Falha de Calibração / Falha Eletrônica / Contaminação de Ar",
+          "mecanismo":     "Degradação Elétrica",
+          "criticidade":   "Média",
+          "boundary":      "Interno",
+          "ttr_mu": 2.0, "ttr_sigma": 0.4, "cost_factor": 1.0, "prob": 0.14
+        },
+        {
+          "subcomponente": "Gaxeta / Empanque",
+          "modo_falha":    "Vazamento Externo pela Gaxeta",
+          "causa_raiz":    "Envelhecimento / Pressão Cíclica / Temperatura Alta",
+          "mecanismo":     "Fadiga",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 2.2, "ttr_sigma": 0.4, "cost_factor": 1.5, "prob": 0.10
+        },
+        {
+          "subcomponente": "Mola do Atuador",
+          "modo_falha":    "Fratura da Mola",
+          "causa_raiz":    "Fadiga por Ciclos / Corrosão da Mola",
+          "mecanismo":     "Fadiga",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 3.0, "ttr_sigma": 0.5, "cost_factor": 2.5, "prob": 0.05
+        },
+        {
+          "subcomponente": "Corpo da Válvula",
+          "modo_falha":    "Erosão do Corpo",
+          "causa_raiz":    "Fluido Erosivo / Operação em Flash",
+          "mecanismo":     "Erosão",
+          "criticidade":   "Média",
+          "boundary":      "Externo",
+          "ttr_mu": 4.0, "ttr_sigma": 0.6, "cost_factor": 3.0, "prob": 0.04
+        },
+        {
+          "subcomponente": "Filtro de Ar / Instrumento",
+          "modo_falha":    "Entupimento do Filtro",
+          "causa_raiz":    "Qualidade do Ar Instrumento / Falta de Manutenção",
+          "mecanismo":     "Acumulação",
+          "criticidade":   "Baixa",
+          "boundary":      "Interno",
+          "ttr_mu": 1.0, "ttr_sigma": 0.3, "cost_factor": 0.3, "prob": 0.02
+        },
+        {
+          "subcomponente": "Flangeamento / Parafusos",
+          "modo_falha":    "Afrouxamento / Corrosão de Parafusos",
+          "causa_raiz":    "Vibração / Corrosão Galvânica / Torque Incorreto",
+          "mecanismo":     "Corrosão",
+          "criticidade":   "Média",
+          "boundary":      "Interno",
+          "ttr_mu": 1.5, "ttr_sigma": 0.3, "cost_factor": 0.6, "prob": 0.01
+        }
+      ]
+    },
+
+    {
+      "name": "Gerador Síncrono",
+      "sector": "Geração de Energia",
+      "iso14224_class": "Generator",
+      "weibull": { "beta": 1.3, "eta": 6000.0 },
+      "operational_context": {
+        "throughput_t_per_h":   200.0,
+        "temp_base_C":           65.0,
+        "temp_std_C":            12.0,
+        "load_mean_pct":         80.0,
+        "load_std_pct":           8.0,
+        "cost_per_ttr_h_brl": 20000.0,
+        "preco_producao_brl_t":  250.0
+      },
+      "failure_scenarios": [
+        {
+          "subcomponente": "Enrolamento do Estátor",
+          "modo_falha":    "Falha de Isolamento (Fase-Terra)",
+          "causa_raiz":    "Envelhecimento Térmico / Umidade / Descargas Parciais",
+          "mecanismo":     "Degradação Elétrica",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 6.0, "ttr_sigma": 0.6, "cost_factor": 6.0, "prob": 0.24
+        },
+        {
+          "subcomponente": "Mancal",
+          "modo_falha":    "Vibração Excessiva / Falha de Mancal",
+          "causa_raiz":    "Desequilíbrio do Rotor / Lubrificação Deficiente",
+          "mecanismo":     "Fadiga",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 4.0, "ttr_sigma": 0.5, "cost_factor": 3.5, "prob": 0.20
+        },
+        {
+          "subcomponente": "Sistema de Excitação",
+          "modo_falha":    "Falha da Excitação",
+          "causa_raiz":    "Falha do Regulador Automático de Tensão (AVR) / Tiristores",
+          "mecanismo":     "Degradação Elétrica",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 3.0, "ttr_sigma": 0.5, "cost_factor": 2.5, "prob": 0.18
+        },
+        {
+          "subcomponente": "Sistema de Resfriamento (Ar / H2 / Água)",
+          "modo_falha":    "Superaquecimento por Falha do Resfriamento",
+          "causa_raiz":    "Falha da Bomba de Água / Vazamento de H2 / Filtros Obstruídos",
+          "mecanismo":     "Degradação Térmica",
+          "criticidade":   "Alta",
+          "boundary":      "Externo",
+          "ttr_mu": 3.5, "ttr_sigma": 0.5, "cost_factor": 2.0, "prob": 0.15
+        },
+        {
+          "subcomponente": "Anéis Coletores / Escovas",
+          "modo_falha":    "Desgaste Excessivo das Escovas",
+          "causa_raiz":    "Contato Elétrico Deficiente / Vibração / Material",
+          "mecanismo":     "Desgaste",
+          "criticidade":   "Baixa",
+          "boundary":      "Interno",
+          "ttr_mu": 1.5, "ttr_sigma": 0.3, "cost_factor": 0.5, "prob": 0.10
+        },
+        {
+          "subcomponente": "Rotor (Enrolamento de Campo)",
+          "modo_falha":    "Falha de Isolamento do Rotor",
+          "causa_raiz":    "Envelhecimento / Vibração / Ciclos Térmicos",
+          "mecanismo":     "Degradação Elétrica",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 8.0, "ttr_sigma": 0.7, "cost_factor": 8.0, "prob": 0.07
+        },
+        {
+          "subcomponente": "AVR / Controle de Tensão",
+          "modo_falha":    "Falha Eletrônica do AVR",
+          "causa_raiz":    "Sobretensão / Envelhecimento de Componentes",
+          "mecanismo":     "Degradação Elétrica",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 2.5, "ttr_sigma": 0.4, "cost_factor": 1.5, "prob": 0.04
+        },
+        {
+          "subcomponente": "Proteções Elétricas",
+          "modo_falha":    "Trip Espúrio",
+          "causa_raiz":    "Falha de Relé / Calibração Incorreta",
+          "mecanismo":     "Degradação Elétrica",
+          "criticidade":   "Baixa",
+          "boundary":      "Interno",
+          "ttr_mu": 1.0, "ttr_sigma": 0.3, "cost_factor": 0.3, "prob": 0.01
+        },
+        {
+          "subcomponente": "Acoplamento",
+          "modo_falha":    "Falha do Acoplamento Flexível",
+          "causa_raiz":    "Fadiga / Desalinhamento",
+          "mecanismo":     "Fadiga Mecânica",
+          "criticidade":   "Alta",
+          "boundary":      "Interno",
+          "ttr_mu": 4.0, "ttr_sigma": 0.6, "cost_factor": 3.0, "prob": 0.01
+        }
+      ]
+    }
+
+  ]
+}

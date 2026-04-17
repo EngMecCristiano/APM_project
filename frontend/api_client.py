@@ -125,6 +125,20 @@ def simulate_rich(
     return _post("/analysis/simulate-rich", body)
 
 
+def get_equipment_catalog() -> List[Dict]:
+    """Retorna lista de equipamentos do catálogo ISO 14224 com setor, classe e parâmetros Weibull."""
+    return _get("/analysis/equipment-catalog")
+
+
+def validate_iso14224(file_bytes: bytes, filename: str) -> Dict:
+    """Valida conformidade ISO 14224 de um CSV e retorna score + lista de issues."""
+    files = {"file": (filename, file_bytes, "text/csv")}
+    r = httpx.post(f"{BASE}/analysis/validate-iso14224", files=files, timeout=TIMEOUT)
+    if r.is_error:
+        _raise(r, "/analysis/validate-iso14224")
+    return r.json()
+
+
 def get_csv_columns(file_bytes: bytes, filename: str) -> Dict:
     files = {"file": (filename, file_bytes, "text/csv")}
     r = httpx.post(f"{BASE}/analysis/csv-columns", files=files, timeout=TIMEOUT)
@@ -227,6 +241,22 @@ def generate_pdf(
 def history_save(tag: str, records: List[Dict], meta: Dict) -> Dict:
     """Salva os records da sessão no histórico persistido do ativo."""
     return _post("/history/save", {"tag": tag, "records": records, "meta": meta})
+
+
+def history_save_rich(tag: str, records: List[Dict], meta: Dict) -> Dict:
+    """Salva registros enriquecidos com taxonomia ISO 14224 completa."""
+    return _post("/history/save-rich", {"tag": tag, "records": records, "meta": meta})
+
+
+def history_load_rich(tag: str) -> Optional[List[Dict]]:
+    """Carrega histórico ISO 14224 completo do ativo. Retorna None se não existir."""
+    try:
+        data = _get(f"/history/load-rich/{tag}")
+        return data.get("records")
+    except BackendError as e:
+        if e.status == 404:
+            return None
+        raise
 
 
 def history_load(tag: str) -> Optional[List[Dict]]:
