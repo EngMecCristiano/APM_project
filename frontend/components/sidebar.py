@@ -35,7 +35,14 @@ MECANISMOS_DEGRADACAO = [
     "Vibração Excessiva", "Desequilíbrio",
 ]
 
-TIPOS_MANUTENCAO = ["Corretiva", "Corretiva Emergencial", "Preventiva", "Preditiva", "Censura"]
+TIPOS_MANUTENCAO = [
+    "Corretiva", "Corretiva Emergencial",       # falha real → Falha = 1
+    "Preventiva", "Preditiva",                  # intervenção planejada → Falha = 0
+    "Parada Operacional",                        # processo parou → Falha = 0
+    "Fim de Observação",                         # último registro do período → Falha = 0
+    "Transferência",                             # equipamento relocado → Falha = 0
+    "Censura",                                   # censura genérica → Falha = 0
+]
 CRITICIDADES     = ["Alta", "Média", "Baixa"]
 BOUNDARIES       = ["Interno", "Externo"]
 
@@ -474,12 +481,16 @@ def _render_manual_entry(
         with c10:
             lucro = st.number_input("Lucro Cessante (R$)", 0.0, 1e9, 0.0, 100.0, key="me_lucro")
 
-        _TIPOS_CENSURA_FRONT = {"Preventiva", "Preditiva", "Censura"}
+        _TIPOS_CENSURA_FRONT = {
+            "Preventiva", "Preditiva",
+            "Parada Operacional", "Fim de Observação", "Transferência",
+            "Censura",
+        }
         if tipo_m in _TIPOS_CENSURA_FRONT:
-            st.info("ℹ️ Tipo de Manutenção Preventiva/Preditiva/Censura → registro tratado como **dado censurado** (Falha = 0).")
+            st.info(f"ℹ️ **{tipo_m}** → registro tratado como **dado censurado** (Falha = 0).")
 
         if st.button("➕ Adicionar à Lista", use_container_width=True):
-            # Preventiva/Preditiva/Censura → sempre censura (Falha = 0), independente do seletor
+            # Qualquer tipo não-corretivo → sempre censura (Falha = 0)
             falha_efetivo = 0 if tipo_m in _TIPOS_CENSURA_FRONT else int(falha)
             n_evt    = len(st.session_state["manual_events"]) + 1
             tempo_ac = sum(e["TBF"] for e in st.session_state["manual_events"]) + tbf
@@ -630,7 +641,7 @@ TBF_horas,status
 | 14 | `Modo_Falha` | texto | Ex: `Desgaste`, `Fratura`, `Vazamento` |
 | 15 | `Causa_Raiz` | texto | Ex: `Lubrificação Deficiente`, `Sobrecarga` |
 | 16 | `Mecanismo_Degradacao` | texto | Ex: `Fadiga`, `Corrosão`, `Erosão` |
-| 17 | `Tipo_Manutencao` | texto | `Corretiva` · `Preventiva` · `Preditiva` · `Censura` |
+| 17 | `Tipo_Manutencao` | texto | `Corretiva` · `Corretiva Emergencial` · `Preventiva` · `Preditiva` · `Parada Operacional` · `Fim de Observação` · `Transferência` · `Censura` |
 | 18 | `Criticidade` | texto | `Alta` · `Média` · `Baixa` |
 | 19 | `Boundary` | texto | `Interno` · `Externo` |
 | 20 | `Carga_Media_Pct` | número | Carga operacional média em % |
@@ -641,8 +652,8 @@ TBF_horas,status
 | 25 | `Lucro_Cessante_BRL` | número | Receita não gerada pela parada em R$ |
 | 26 | `Disponibilidade_Ciclo_Pct` | número | Disponibilidade do ciclo em % |
 
-> **Regra de censura automática:** se `Tipo_Manutencao` for `Preventiva`, `Preditiva` ou `Censura`,
-> o campo `Falha` é forçado para `0` independente do valor no CSV.
+> **Regra de censura automática:** qualquer `Tipo_Manutencao` não-corretivo (`Preventiva`, `Preditiva`,
+> `Parada Operacional`, `Fim de Observação`, `Transferência`, `Censura`) força `Falha = 0` no CSV.
 """)
 
     file = st.file_uploader("Selecionar arquivo CSV", type=["csv"])

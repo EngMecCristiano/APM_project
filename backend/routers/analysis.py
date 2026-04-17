@@ -54,7 +54,12 @@ _ISO14224_RECOMMENDED = {
 }
 _CRITICIDADE_VALID = {"Alta", "Média", "Baixa", "—"}
 _BOUNDARY_VALID    = {"Interno", "Externo", "—"}
-_TIPO_MANUT_VALID  = {"Corretiva", "Corretiva Emergencial", "Preventiva", "Preditiva", "Censura"}
+_TIPO_MANUT_VALID  = {
+    "Corretiva", "Corretiva Emergencial",
+    "Preventiva", "Preditiva",
+    "Parada Operacional", "Fim de Observação", "Transferência",
+    "Censura",
+}
 
 
 @router.post("/validate-iso14224", response_model=ISO14224ValidationResult,
@@ -251,9 +256,13 @@ async def upload_csv_rich(file: UploadFile = File(...)) -> List[RichDataRecord]:
     """
     Importa CSV com o esquema completo ISO 14224.
     Colunas obrigatórias: TBF, Falha.
-    Aplica regra de censura: Tipo_Manutencao ∈ {Preventiva, Preditiva, Censura} → Falha = 0.
+    Aplica regra de censura: qualquer Tipo_Manutencao não-corretivo → Falha = 0.
     """
-    _TIPOS_CENSURA = {"Preventiva", "Preditiva", "Censura"}
+    _TIPOS_CENSURA = {
+        "Preventiva", "Preditiva",
+        "Parada Operacional", "Fim de Observação", "Transferência",
+        "Censura",
+    }
     _STR_DEFAULTS = {
         "OS_Numero": "—", "Tag_Ativo": "EQP-01", "Tipo_Equipamento": "Genérico",
         "Data_Inicio_Intervalo": "", "Data_Evento": "", "Data_Retorno_Operacao": "",

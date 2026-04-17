@@ -229,10 +229,14 @@ class RichSyntheticGenerator:
                 lucro_cess[i] = round(impacto_t[i] * preco_t, -2)
 
         # ── 7. Tipo de manutenção e OS ──────────────────────────────────────
+        _CENSURA_TIPOS  = ["Preventiva", "Parada Operacional", "Preditiva",
+                           "Fim de Observação", "Transferência", "Censura"]
+        _CENSURA_PROBS  = [0.38,          0.28,               0.20,
+                           0.07,           0.04,              0.03]
         tipo_manut = []
         for i in range(n_samples):
             if falha[i] == 0:
-                tipo_manut.append("Censura")
+                tipo_manut.append(rng.choice(_CENSURA_TIPOS, p=_CENSURA_PROBS))
             elif i in infant_idx:
                 tipo_manut.append("Corretiva Emergencial")
             elif scenarios[scenario_idx[i]]["criticidade"] == "Alta":

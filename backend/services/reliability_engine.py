@@ -174,8 +174,12 @@ class ReliabilityEngine:
             for i in range(n_samples)
         ]
 
-    # Tipos de manutenção que representam intervenções PLANEJADAS — sempre censura
-    _TIPOS_CENSURA = {"Preventiva", "Preditiva", "Censura"}
+    # Tipos de manutenção que representam eventos NÃO-FALHA — sempre censura (Falha = 0)
+    _TIPOS_CENSURA = {
+        "Preventiva", "Preditiva",
+        "Parada Operacional", "Fim de Observação", "Transferência",
+        "Censura",
+    }
 
     @staticmethod
     def process_real_data(
