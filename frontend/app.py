@@ -297,6 +297,7 @@ def main() -> None:
         "🔮 Preditiva — RUL",
         "📈 Degradação — RGA/NHPP",
         "🧠 Machine Learning",
+        "🤖 Manutenção Prescritiva",
         "🧮 EDA + Auditoria",
         "📖 Guia & Teoria",
     ]
@@ -321,15 +322,20 @@ def main() -> None:
         else:
             st.info("Análise ML não disponível — verifique erros acima.")
     with tabs[4]:
+        if ml is not None:
+            ml_tab.render_prescriptive(ml, fit, rul, records, meta)
+        else:
+            st.info("Execute a análise ML primeiro para gerar a prescrição.")
+    with tabs[5]:
         if audit is not None:
             audit_tab.render(audit, records, meta)
         else:
             st.info("Auditoria não disponível — verifique erros acima.")
-    with tabs[5]:
+    with tabs[6]:
         guide_tab.render()
 
     if rich_df is not None:
-        with tabs[6]:
+        with tabs[7]:
             _render_rich_tab(rich_df)
 
     # ── Exportação PDF ────────────────────────────────────────────────────────
