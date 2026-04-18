@@ -661,7 +661,7 @@
         },
         {
           "subcomponente": "Instrumentação / Sistema de Controle",
-          "modo_falha":    "Desarme Espúrio / Falha de Sensor",
+          "modo_falha":    "Trip Espúrio / Falha de Sensor",
           "causa_raiz":    "Falha Eletrônica / Calibração Incorreta",
           "mecanismo":     "Degradação Elétrica",
           "criticidade":   "Baixa",
@@ -859,7 +859,7 @@
         },
         {
           "subcomponente": "Instrumentação / Proteções",
-          "modo_falha":    "Desarme Espúrio / Falha de Sensor",
+          "modo_falha":    "Trip Espúrio / Falha de Sensor",
           "causa_raiz":    "Falha Eletrônica / Calibração Incorreta",
           "mecanismo":     "Degradação Elétrica",
           "criticidade":   "Baixa",
@@ -1147,7 +1147,7 @@
         },
         {
           "subcomponente": "Proteções Elétricas",
-          "modo_falha":    "Desarme Espúrio",
+          "modo_falha":    "Trip Espúrio",
           "causa_raiz":    "Falha de Relé / Calibração Incorreta",
           "mecanismo":     "Degradação Elétrica",
           "criticidade":   "Baixa",

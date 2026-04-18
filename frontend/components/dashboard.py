@@ -28,7 +28,7 @@ def display_health_battery(health_score: int) -> None:
             <div class="battery-level" style="width:{health_score}%;background:{bar_color};
                  box-shadow: 0 0 10px {glow};"></div>
         </div>
-        <div class="health-label">{health_score}% — ASSET HEALTH</div>
+        <div class="health-label">{health_score}% — SAÚDE DO ATIVO</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -57,7 +57,7 @@ def display_kpi_cards(
     with col2:
         st.markdown(f"""
         <div class="metric-card" style="background:{risk_bg};border:1px solid {risk_border};">
-            <div class="metric-label">RISK SIGNAL</div>
+            <div class="metric-label">INDICADOR DE RISCO</div>
             <div class="metric-value" style="color:{risk_text};">{risk_level}</div>
         </div>""", unsafe_allow_html=True)
     with col3:
@@ -76,7 +76,7 @@ def display_kpi_cards(
     # Segunda linha — KPIs derivados do audit
     c1, c2, c3, c4, c5 = st.columns(5)
     kpis = [
-        (f"{nbr(audit.get('availability_pct', 0), 1)}%",          "AVAILABILITY",  "#A5F3FC", "rgba(0,212,255,0.20)",   "rgba(165,243,252,0.45)"),
+        (f"{nbr(audit.get('availability_pct', 0), 1)}%",          "DISPONIBILIDADE",  "#A5F3FC", "rgba(0,212,255,0.20)",   "rgba(165,243,252,0.45)"),
         (f"{nbr(audit.get('failure_rate_obs', 0) * 1000, 2)}",    "FALHAS/1000h",  "#FCA5A5", "rgba(220,38,38,0.20)",   "rgba(252,129,129,0.45)"),
         (f"{audit.get('mtbf_h', 0):.0f}h",                    "MTBF",          "#C4B5FD", "rgba(124,58,237,0.20)",  "rgba(196,181,253,0.45)"),
         (f"{audit.get('b10', 0):.0f}h",                       "B10 LIFE",      "#FDE68A", "rgba(202,138,4,0.20)",   "rgba(253,230,138,0.45)"),
