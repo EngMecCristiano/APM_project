@@ -94,7 +94,7 @@ diagnóstico em tempo real e prescrições de manutenção acionáveis via Agent
         _render_prediction(trend, forecast, feat_imp, tbf_series, metrics, meta)
 
     with tab_anom:
-        _render_anomalies(anomalies, tbf_series)
+        _render_anomalies(anomalies, tbf_series, records)
 
     with tab_risk:
         _render_risk(risk, rul, forecast, meta, best)
@@ -189,7 +189,7 @@ Use para antecipar se o próximo TBF será curto (risco) ou longo (seguro).
             ])
 
 
-def _render_anomalies(anomalies, tbf_series):
+def _render_anomalies(anomalies, tbf_series, records):
     with st.expander("ℹ️ Como interpretar — Detecção de Anomalias", expanded=False):
         st.markdown("""
 **Algoritmo:** Isolation Forest — detecta TBFs que fogem do padrão histórico.
