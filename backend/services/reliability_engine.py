@@ -279,12 +279,14 @@ class ReliabilityEngine:
         rng = np.random.default_rng(42)
         boot_ruls: List[float] = []
         t = params.dist_type
+        # Usa ao menos 50 amostras por bootstrap para reduzir variância do IC
+        _boot_n = max(50, n_bootstrap // 6)
         try:
             for _ in range(n_bootstrap):
                 if t == "weibull":
                     from reliability.Fitters import Fit_Weibull_2P
                     sample = np.sort(
-                        np.random.weibull(params.beta, size=max(30, n_bootstrap // 10)) * params.eta
+                        np.random.weibull(params.beta, size=_boot_n) * params.eta
                     )
                     fit_b = Fit_Weibull_2P(failures=sample.tolist(),
                                            show_probability_plot=False, print_results=False)
@@ -314,8 +316,8 @@ class ReliabilityEngine:
             rul_p10 = float(np.percentile(boot_ruls, 10))
             rul_p90 = float(np.percentile(boot_ruls, 90))
         else:
-            rul_p10 = rul_time * 0.7
-            rul_p90 = rul_time * 1.3
+            rul_p10 = rul_time * 0.80
+            rul_p90 = rul_time * 1.20
 
         t_fut  = np.linspace(0.01, rul_time * 1.5, n_points)
         r_cond = (

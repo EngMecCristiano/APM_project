@@ -236,28 +236,72 @@ def _parse_response(text: str, steps: List[str]) -> Dict:
 # ─── Fallback Expert System (sem API key) ─────────────────────────────────────
 
 def _expert_system(req: Dict, catalog: List[Dict]) -> Dict:
-    """Prescrição baseada em regras quando a API key não está disponível."""
-    eq_type  = req.get("equipment_type", "")
-    risk     = int(req.get("risk_score", 0))
-    rul      = float(req.get("rul_hours", 9999))
-    tag      = req.get("tag", "—")
+    """Prescrição baseada em regras quando a API key não está disponível.
+    Executa as mesmas 3 ferramentas do agente e gera diagnóstico estruturado.
+    """
+    eq_type   = req.get("equipment_type", "")
+    risk      = int(req.get("risk_score", 0))
+    rul       = float(req.get("rul_hours", 9999))
+    tag       = req.get("tag", "—")
+    horim     = float(req.get("horimetro_atual", 0))
+    beta      = req.get("weibull_beta")
+    eta       = req.get("weibull_eta")
+    trend     = req.get("trend_type", "Estável")
+    deg_rate  = float(req.get("degradation_rate", 0))
+    n_fail    = int(req.get("failure_count", 0))
+    n_anom    = int(req.get("anomaly_count", 0))
 
     urgency = _tool_classify_urgency({
         "risk_score":    risk,
-        "trend_type":    req.get("trend_type", ""),
+        "trend_type":    trend,
         "rul_hours":     rul,
-        "anomaly_count": req.get("anomaly_count", 0),
+        "anomaly_count": n_anom,
+        "failure_count": n_fail,
     })
     window = _tool_maintenance_window({
-        "rul_hours":      rul,
-        "risk_score":     risk,
-        "pmo_tp_otimo":   req.get("pmo_tp_otimo"),
-        "horimetro_atual": req.get("horimetro_atual", 0),
+        "rul_hours":       rul,
+        "risk_score":      risk,
+        "pmo_tp_otimo":    req.get("pmo_tp_otimo"),
+        "horimetro_atual": horim,
     })
     scen_result = _tool_get_scenarios({"equipment_type": eq_type, "top_n": 6}, catalog)
 
+    scenarios = scen_result.get("scenarios", [])
+
+    # ── Diagnóstico estruturado com 3 seções (mesmo formato do agente) ───────
+    weibull_str = (
+        f"β={beta:.3f}, η={eta:.0f} h" if beta and eta
+        else "parâmetros não disponíveis"
+    )
+    top3 = scenarios[:3]
+    top3_txt = "; ".join(
+        f"{s.get('modo_falha','—')} ({s.get('prob', 0)*100:.0f}%, {s.get('criticidade','—')})"
+        for s in top3
+    ) if top3 else "cenários não disponíveis"
+
+    diag = (
+        f"**1- Situação Operacional e Perfil de Confiabilidade**\n"
+        f"O ativo **{eq_type}** (TAG: {tag}) acumula {horim:.0f} horas de horímetro "
+        f"com RUL estimado de {rul:.0f} h. "
+        f"O score de risco de {risk}/100 ({urgency['nivel_urgencia']}) é sustentado pelo "
+        f"modelo Weibull com {weibull_str}. "
+        f"O histórico registra {n_fail} falhas e {n_anom} anomalias detectadas, "
+        f"com tendência: {trend} ({deg_rate:+.2f}%/ciclo).\n\n"
+
+        f"**2- Análise dos Modos de Falha Críticos (ISO 14224)**\n"
+        f"O catálogo ISO 14224 para {eq_type} identificou {len(scenarios)} cenários ranqueados "
+        f"por probabilidade × criticidade. Os principais: {top3_txt}. "
+        f"Esses cenários fundamentam as ações prescritas abaixo.\n\n"
+
+        f"**3- Prescrição e Janela de Intervenção**\n"
+        f"Nível de urgência: **{urgency['nivel_urgencia']}** — {urgency['acao_principal']}. "
+        f"Janela recomendada: {window['janela_recomendada']} "
+        f"(intervir em até {window['horas_ate_intervencao']:.0f} h). "
+        f"{window.get('interpretacao', '')}"
+    )
+
     acoes = []
-    for i, s in enumerate(scen_result.get("scenarios", []), 1):
+    for i, s in enumerate(scenarios, 1):
         ttr_exp = round(math.exp(s.get("ttr_mu", 3.0)), 1) if s.get("ttr_mu") else None
         acoes.append({
             "prioridade":         i,
@@ -274,26 +318,29 @@ def _expert_system(req: Dict, catalog: List[Dict]) -> Dict:
             "justificativa": (
                 f"Probabilidade: {s.get('prob', 0) * 100:.0f}% — "
                 f"Criticidade: {s.get('criticidade', 'Média')} — "
-                f"Boundary: {s.get('boundary', '—')}"
+                f"Fronteira: {s.get('boundary', '—')}"
             ),
         })
 
     return {
-        "diagnostico": (
-            f"Score de risco {risk}/100 — {urgency['nivel_urgencia']}. "
-            f"{urgency['acao_principal']}."
-        ),
+        "diagnostico":           diag,
         "sumario_executivo": (
-            f"Equipamento **{eq_type}** (TAG: {tag}) com RUL de {rul:.0f}h e "
-            f"score de risco {risk}/100. Nível de urgência: **{urgency['nivel_urgencia']}**. "
-            f"Intervir em até {window['horas_ate_intervencao']:.0f}h."
+            f"Equipamento **{eq_type}** (TAG: {tag}) com RUL de {rul:.0f} h e "
+            f"score de risco {risk}/100. Urgência: **{urgency['nivel_urgencia']}**. "
+            f"Intervir em até {window['horas_ate_intervencao']:.0f} h — "
+            f"{window['janela_recomendada']}."
         ),
         "nivel_urgencia":        urgency["nivel_urgencia"],
         "cor_urgencia":          urgency["cor"],
         "proxima_intervencao_h": window["horas_ate_intervencao"],
         "janela_intervencao":    window["janela_recomendada"],
         "acoes":                 acoes,
-        "raciocinio_agente":     ["[Expert System — ANTHROPIC_API_KEY não configurada]"],
+        "raciocinio_agente": [
+            "🔧 get_catalog_scenarios — Expert System",
+            "🔧 compute_maintenance_window — Expert System",
+            "🔧 classify_urgency — Expert System",
+            "[Expert System — ANTHROPIC_API_KEY não configurada]",
+        ],
         "texto_completo":        "",
         "ia_disponivel":         False,
     }
@@ -302,7 +349,7 @@ def _expert_system(req: Dict, catalog: List[Dict]) -> Dict:
 # ─── Entrada principal ────────────────────────────────────────────────────────
 
 _SYSTEM_PROMPT = """Você é um especialista sênior em Manutenção Prescritiva e Confiabilidade Industrial \
-com expertise em ISO 14224:2016 e RCM (Reliability-Centered Maintenance).
+com expertise em ISO 14224:2016 e MCC (Manutenção Centrada em Confiabilidade).
 
 Você recebe o estado atual de um ativo industrial (score de risco ML, RUL, parâmetros Weibull, \
 histórico de falhas) e usa as ferramentas disponíveis para gerar um plano prescritivo completo.
@@ -314,9 +361,19 @@ histórico de falhas) e usa as ferramentas disponíveis para gerar um plano pres
 4. Sintetize em diagnóstico técnico + plano prescritivo JSON
 
 **Formato de resposta final obrigatório:**
-Após usar as ferramentas, forneça:
-1. Diagnóstico técnico (2–3 parágrafos em português técnico)
-2. JSON estruturado no formato exato abaixo
+Após usar as ferramentas, forneça o diagnóstico técnico estruturado em 3 seções numeradas
+com título descritivo, seguido do JSON. Use EXATAMENTE este formato para o diagnóstico:
+
+**1- Situação Operacional e Perfil de Confiabilidade**
+[Texto técnico sobre o estado atual do ativo, horímetro, RUL, parâmetros Weibull, histórico de falhas]
+
+**2- Análise dos Modos de Falha Críticos (ISO 14224)**
+[Texto técnico sobre os cenários identificados pelo catálogo, probabilidades, criticidades]
+
+**3- Prescrição e Janela de Intervenção**
+[Texto técnico com recomendação de ação, janela de intervenção, urgência]
+
+Seguido do JSON estruturado:
 
 ```json
 {

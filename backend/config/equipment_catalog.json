@@ -345,8 +345,8 @@
       },
       "failure_scenarios": [
         {
-          "subcomponente": "Impeller / Rotor",
-          "modo_falha":    "Erosão Excessiva do Impeller",
+          "subcomponente": "Impelidor / Rotor",
+          "modo_falha":    "Erosão Excessiva do Impelidor",
           "causa_raiz":    "Alta Concentração de Sólidos / Abrasividade da Polpa",
           "mecanismo":     "Erosão-Corrosão",
           "criticidade":   "Alta",
@@ -363,8 +363,8 @@
           "ttr_mu": 2.2, "ttr_sigma": 0.4, "cost_factor": 1.5, "prob": 0.20
         },
         {
-          "subcomponente": "Liner / Voluta",
-          "modo_falha":    "Desgaste do Liner",
+          "subcomponente": "Revestimento / Voluta",
+          "modo_falha":    "Desgaste do Revestimento",
           "causa_raiz":    "Concentração de Sólidos Alta / Material Grosseiro",
           "mecanismo":     "Abrasão",
           "criticidade":   "Média",
@@ -579,8 +579,8 @@
       },
       "failure_scenarios": [
         {
-          "subcomponente": "Impeller",
-          "modo_falha":    "Erosão do Impeller por Partículas",
+          "subcomponente": "Impelidor",
+          "modo_falha":    "Erosão do Impelidor por Partículas",
           "causa_raiz":    "Contaminação do Gás de Processo / Líquido Arrastado",
           "mecanismo":     "Erosão",
           "criticidade":   "Alta",
@@ -607,8 +607,8 @@
         },
         {
           "subcomponente": "Rotor",
-          "modo_falha":    "Surge (Instabilidade de Fluxo)",
-          "causa_raiz":    "Operação Fora da Curva de Desempenho / Falha Anti-Surge",
+          "modo_falha":    "Instabilidade de Fluxo (Surge)",
+          "causa_raiz":    "Operação Fora da Curva de Desempenho / Falha na Válvula Anti-Surge",
           "mecanismo":     "Vibração Excessiva",
           "criticidade":   "Alta",
           "boundary":      "Externo",
@@ -643,7 +643,7 @@
         },
         {
           "subcomponente": "Intercooler / Aftercooler",
-          "modo_falha":    "Fouling / Incrustação no Resfriador",
+          "modo_falha":    "Incrustação no Resfriador",
           "causa_raiz":    "Qualidade da Água de Resfriamento / Deposição",
           "mecanismo":     "Acumulação",
           "criticidade":   "Média",
@@ -661,7 +661,7 @@
         },
         {
           "subcomponente": "Instrumentação / Sistema de Controle",
-          "modo_falha":    "Trip Espúrio / Falha de Sensor",
+          "modo_falha":    "Desarme Espúrio / Falha de Sensor",
           "causa_raiz":    "Falha Eletrônica / Calibração Incorreta",
           "mecanismo":     "Degradação Elétrica",
           "criticidade":   "Baixa",
@@ -696,8 +696,8 @@
           "ttr_mu": 2.5, "ttr_sigma": 0.5, "cost_factor": 2.0, "prob": 0.26
         },
         {
-          "subcomponente": "Impeller",
-          "modo_falha":    "Erosão / Corrosão do Impeller",
+          "subcomponente": "Impelidor",
+          "modo_falha":    "Erosão / Corrosão do Impelidor",
           "causa_raiz":    "Fluido Corrosivo (H2S, CO2) / Partículas Sólidas",
           "mecanismo":     "Corrosão",
           "criticidade":   "Alta",
@@ -760,7 +760,7 @@
         },
         {
           "subcomponente": "Sistema de Resfriamento de Vedação",
-          "modo_falha":    "Falha do Flush Plan",
+          "modo_falha":    "Falha do Plano de Selagem",
           "causa_raiz":    "Entupimento do Orifício / Falha da Bomba Auxiliar",
           "mecanismo":     "Acumulação",
           "criticidade":   "Baixa",
@@ -859,7 +859,7 @@
         },
         {
           "subcomponente": "Instrumentação / Proteções",
-          "modo_falha":    "Trip Espúrio / Falha de Sensor",
+          "modo_falha":    "Desarme Espúrio / Falha de Sensor",
           "causa_raiz":    "Falha Eletrônica / Calibração Incorreta",
           "mecanismo":     "Degradação Elétrica",
           "criticidade":   "Baixa",
@@ -1003,7 +1003,7 @@
         },
         {
           "subcomponente": "Assento / Plug",
-          "modo_falha":    "Vazamento Interno (Across-Seat)",
+          "modo_falha":    "Vazamento Interno (pelo Assento)",
           "causa_raiz":    "Erosão / Partículas no Fluido / Corrosão do Assento",
           "mecanismo":     "Erosão",
           "criticidade":   "Média",
@@ -1147,7 +1147,7 @@
         },
         {
           "subcomponente": "Proteções Elétricas",
-          "modo_falha":    "Trip Espúrio",
+          "modo_falha":    "Desarme Espúrio",
           "causa_raiz":    "Falha de Relé / Calibração Incorreta",
           "mecanismo":     "Degradação Elétrica",
           "criticidade":   "Baixa",

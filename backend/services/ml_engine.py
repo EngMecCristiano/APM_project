@@ -271,8 +271,9 @@ class MLOrchestrator:
         anomalies = AnomalyDetector.detect(tbf)
 
         # Risk score integrado
+        mean_tbf = float(np.mean(tbf)) if len(tbf) > 0 else None
         risk = _compute_risk(trend, anomalies.count, len(records),
-                             next_tbf, horimetro_atual, rul_data,
+                             next_tbf, mean_tbf, rul_data,
                              risk_thresholds=risk_thresholds)
 
         return MLAnalysisResult(
@@ -292,7 +293,7 @@ def _compute_risk(
     anomaly_count: int,
     total_samples: int,
     next_tbf: Optional[float],
-    horimetro_atual: float,
+    mean_tbf: Optional[float],
     rul_data: Optional[Dict[str, Any]],
     risk_thresholds: Optional[Dict[str, int]] = None,
 ):
@@ -321,14 +322,15 @@ def _compute_risk(
         elif r_current < 0.8: c3 = 8
         else:                  c3 = 3
 
-    # C4: Proximidade ao próximo TBF (0-15)
+    # C4: Próximo TBF previsto vs média histórica (0-15)
+    # Ratio > 1 = próximo ciclo mais curto que a média → maior risco
     c4 = 0
-    if next_tbf and next_tbf > 0 and horimetro_atual > 0:
-        ratio = horimetro_atual / next_tbf
-        if   ratio >= 0.9: c4 = 15
-        elif ratio >= 0.7: c4 = 10
-        elif ratio >= 0.5: c4 = 5
-        else:              c4 = 2
+    if next_tbf and next_tbf > 0 and mean_tbf and mean_tbf > 0:
+        ratio = mean_tbf / next_tbf   # > 1 quando próximo TBF < média (degradação)
+        if   ratio >= 1.5: c4 = 15   # próximo TBF < 67% da média → risco alto
+        elif ratio >= 1.2: c4 = 10   # próximo TBF < 83% da média → risco moderado
+        elif ratio >= 1.0: c4 = 5    # próximo TBF levemente abaixo da média
+        else:              c4 = 2    # próximo TBF acima da média → baixo risco
 
     score = c1 + c2 + c3 + c4
 

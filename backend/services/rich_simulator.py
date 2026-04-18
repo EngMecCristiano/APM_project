@@ -259,10 +259,67 @@ class RichSyntheticGenerator:
             100.0,
         )
 
+        # ── Taxonomia ISO 14224 para eventos censurados (Falha = 0) ─────────
+        # Segundo ISO 14224, intervenções programadas também têm modo/causa/mecanismo
+        _CENSURA_TAXONOMIA = {
+            "Preventiva": {
+                "modo_falha":         "Manutenção Preventiva",
+                "causa_raiz":         "Intervenção Preventiva Programada",
+                "mecanismo":          "Desgaste por Uso / Fadiga Previsível",
+                "criticidade":        "Média",
+            },
+            "Preditiva": {
+                "modo_falha":         "Manutenção Preditiva",
+                "causa_raiz":         "Condição Monitorada Atingida",
+                "mecanismo":          "Desgaste Incipiente Detectado",
+                "criticidade":        "Média",
+            },
+            "Parada Operacional": {
+                "modo_falha":         "Parada de Processo",
+                "causa_raiz":         "Decisão Operacional / Parada da Planta",
+                "mecanismo":          "Não Aplicável",
+                "criticidade":        "Baixa",
+            },
+            "Fim de Observação": {
+                "modo_falha":         "Fim do Período de Observação",
+                "causa_raiz":         "Censura Administrativa",
+                "mecanismo":          "Não Aplicável",
+                "criticidade":        "Baixa",
+            },
+            "Transferência": {
+                "modo_falha":         "Transferência de Ativo",
+                "causa_raiz":         "Realocação / Transferência de Planta",
+                "mecanismo":          "Não Aplicável",
+                "criticidade":        "Baixa",
+            },
+            "Censura": {
+                "modo_falha":         "Censura (Em Operação)",
+                "causa_raiz":         "Fim do Período de Observação",
+                "mecanismo":          "Não Aplicável",
+                "criticidade":        "Baixa",
+            },
+        }
+
         rows = []
         for i in range(n_samples):
             sc = scenarios[scenario_idx[i]]
-            boundary = sc.get("boundary", "Interno") if falha[i] == 1 else "—"
+            causa = tipo_manut[i]
+            if falha[i] == 1:
+                subcomp     = sc["subcomponente"]
+                modo        = sc["modo_falha"]
+                causa_raiz  = sc["causa_raiz"]
+                mecanismo   = sc["mecanismo"]
+                criticidade = sc["criticidade"]
+                boundary    = sc.get("boundary", "Interno")
+            else:
+                tax         = _CENSURA_TAXONOMIA.get(causa, _CENSURA_TAXONOMIA["Censura"])
+                subcomp     = sc["subcomponente"]   # subcomponente relevante para a intervenção
+                modo        = tax["modo_falha"]
+                causa_raiz  = tax["causa_raiz"]
+                mecanismo   = tax["mecanismo"]
+                criticidade = tax["criticidade"]
+                boundary    = "—"
+
             row = {
                 # Identificação
                 "OS_Numero":               os_nums[i],
@@ -280,12 +337,12 @@ class RichSyntheticGenerator:
                 "Horimetro_Evento":        float(horimetro_evt[i]),
                 "Falha":                   int(falha[i]),
                 # Taxonomia ISO 14224
-                "Subcomponente":           sc["subcomponente"] if falha[i] == 1 else "—",
-                "Modo_Falha":              sc["modo_falha"]    if falha[i] == 1 else "Censura (Em Operação)",
-                "Causa_Raiz":              sc["causa_raiz"]    if falha[i] == 1 else "—",
-                "Mecanismo_Degradacao":    sc["mecanismo"]     if falha[i] == 1 else "—",
-                "Causa_Parada":            tipo_manut[i],
-                "Criticidade":             sc["criticidade"]   if falha[i] == 1 else "—",
+                "Subcomponente":           subcomp,
+                "Modo_Falha":              modo,
+                "Causa_Raiz":              causa_raiz,
+                "Mecanismo_Degradacao":    mecanismo,
+                "Causa_Parada":            causa,
+                "Criticidade":             criticidade,
                 "Boundary":                boundary,
                 # Contexto operacional
                 "Carga_Media_Pct":         float(round(load_pct[i], 1)),

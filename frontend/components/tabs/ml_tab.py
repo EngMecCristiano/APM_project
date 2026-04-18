@@ -355,7 +355,7 @@ Encontra o ponto tp* que equilibra o custo de paradas planejadas (Cp) com o cust
 **Resultado principal — tp\*:** a cada quantas horas fazer a manutenção preventiva.
 **Redução vs. Corretiva:** quanto você economiza comparado a só consertar quando quebrar.
 
-⚠️ **Disponível apenas para Weibull com β > 1** (desgaste progressivo). Para falhas aleatórias (β ≈ 1), manutenção preventiva por tempo não reduz falhas.
+⚠️ **Disponível apenas para Weibull com β > 1** (desgaste progressivo). Para falhas aleatórias (β ≈ 1), manutenção preventiva por tempo não reduz falhas — use Manutenção Baseada em Condição (MMC).
         """)
 
     beta = best.get("beta")
@@ -369,7 +369,7 @@ Encontra o ponto tp* que equilibra o custo de paradas planejadas (Cp) com o cust
         st.warning(
             f"⚠️ β = {nbr(beta, 3)} ≤ 1 — Falhas aleatórias. "
             "PMO por substituição por idade **não é economicamente viável**. "
-            "Recomenda-se política corretiva ou CBM (Condition-Based Maintenance)."
+            "Recomenda-se política corretiva ou MMC (Manutenção Baseada em Condição)."
         )
         return
 
@@ -524,7 +524,7 @@ def _plot_prescriptive_pareto(acoes: list) -> go.Figure:
             range=[0, 115],
             showgrid=False,
         ),
-        legend=dict(orientation="h", y=1.14, x=0, font=dict(size=10)),
+        legend=dict(orientation="v", x=1.05, y=1.0, xanchor="left", font=dict(size=10)),
         margin=dict(t=70, b=70, l=50, r=60),
         bargap=0.25,
     )
@@ -546,47 +546,51 @@ def _render_prescriptive(
 ### O que é Manutenção Prescritiva com IA?
 
 A manutenção prescritiva vai além do diagnóstico: não apenas detecta o risco, mas **prescreve ações
-específicas** com prioridade, janela de intervenção e justificativa técnica.
+específicas** com prioridade, janela de intervenção e justificativa técnica baseada em dados reais.
 
-### Arquitetura do Agente
+### Arquitetura do Sistema
 
 ```
-Dados do Ativo ──► Agente Claude (claude-opus-4-7)
+Dados do Ativo ──► Agente Claude / Expert System
                         │
               ┌─────────┼──────────┐
               ▼         ▼          ▼
-    get_catalog    compute_      classify_
-    _scenarios     maintenance   urgency
-                   _window
+    Catálogo      Janela de     Urgência
+    ISO 14224     Intervenção   (Crítica/Alta/
+    (Cenários)    (RUL+PMO)     Média/Baixa)
               │         │          │
               └─────────┴──────────┘
                         │
                         ▼
               Plano Prescritivo ISO 14224
+              (Diagnóstico + Ações + Pareto)
 ```
 
-### Ferramentas do Agente
+### Ferramentas Utilizadas
 
 | Ferramenta | O que faz |
 |---|---|
-| `get_catalog_scenarios` | Busca os modos de falha mais críticos e prováveis no catálogo ISO 14224 |
-| `compute_maintenance_window` | Calcula a janela de intervenção com base no RUL + Score de Risco + PMO |
-| `classify_urgency` | Define o nível de urgência: Crítica / Alta / Média / Baixa |
+| Catálogo de Cenários | Busca os modos de falha mais críticos e prováveis no catálogo ISO 14224 |
+| Janela de Intervenção | Calcula quando intervir com base no RUL + Score de Risco + Intervalo PMO |
+| Classificação de Urgência | Define o nível de urgência: Crítica / Alta / Média / Baixa |
 
-O agente raciocina em múltiplos passos, chama as ferramentas que julgar necessárias
-e sintetiza tudo em um **plano de ação priorizado com justificativas técnicas**.
+### Dois Modos de Operação
+
+**Com ANTHROPIC_API_KEY:** o Agente Claude raciocina em múltiplos passos, chama as ferramentas,
+e sintetiza um diagnóstico narrativo + plano de ação com justificativas detalhadas.
+
+**Sem ANTHROPIC_API_KEY (Expert System):** executa as mesmas 3 ferramentas por regras ISO 14224,
+gerando diagnóstico estruturado e plano de ação idêntico — sem custo de API.
+Em ambos os modos, o resultado exibe: raciocínio das ferramentas, diagnóstico em 3 seções,
+sumário executivo, tabela de ações e gráfico de Pareto 80/20.
 
 ### Passo a Passo para Usar
 
-1. **Execute a análise completa** — clique em Executar / Processar na sidebar
-2. **Aguarde o carregamento** de todas as abas (LDA, RUL, ML)
-3. **Acesse esta sub-aba** — Manutenção Prescritiva
-4. **Clique em "Gerar Prescrição com IA"**
-5. O agente analisa: score de risco · RUL · tendência · catálogo ISO 14224
-6. **Revise o plano prescritivo** — prioridades, ações e janelas de intervenção
-
-> **Sem ANTHROPIC_API_KEY:** O sistema usa Expert System baseado em regras ISO 14224
-> (sem custo, sem API externa) como fallback automático.
+1- **Execute a análise completa** — clique em Executar / Processar na barra lateral
+2- **Aguarde o carregamento** de todas as abas (LDA, RUL, ML)
+3- **Acesse esta aba** — Manutenção Prescritiva
+4- **Clique em "Gerar Prescrição com IA"**
+5- Revise: diagnóstico técnico · ações priorizadas · janelas de intervenção · Pareto de impacto
         """)
 
     risk  = ml["risk"]
@@ -750,7 +754,7 @@ e sintetiza tudo em um **plano de ação priorizado com justificativas técnicas
                 "Modo de Falha":  a.get("modo_falha", "—"),
                 "Causa Raiz":     a.get("causa_raiz", "—"),
                 "Criticidade":    crit_colors.get(a.get("criticidade", "—"), "⚪") + " " + a.get("criticidade", "—"),
-                "Boundary":       a.get("boundary", "—"),
+                "Fronteira":      a.get("boundary", "—"),
                 "Janela":         a.get("janela_intervencao", "—"),
                 "TTR Esp. (h)":   f"{a.get('ttr_esperado_h', '—')}",
                 "Custo Rel.":     f"{a.get('custo_relativo', 1.0):.1f}×",
@@ -774,7 +778,7 @@ e sintetiza tudo em um **plano de ação priorizado com justificativas técnicas
                     st.markdown(f"**Mecanismo:** {a.get('mecanismo','—')}")
                 with col_r:
                     st.markdown(f"**Criticidade:** {crit_icon} {a.get('criticidade','—')}")
-                    st.markdown(f"**Boundary:** {a.get('boundary','—')}")
+                    st.markdown(f"**Fronteira:** {a.get('boundary','—')}")
                     st.markdown(f"**Janela:** {a.get('janela_intervencao','—')}")
                     if a.get("ttr_esperado_h"):
                         st.markdown(f"**TTR Esperado:** {a['ttr_esperado_h']} h")
