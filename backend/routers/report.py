@@ -44,6 +44,88 @@ def _safe(d: dict, *keys, default="—"):
     return d if d not in (None, {}, []) else default
 
 
+def _md_inline(text: str) -> str:
+    """Converte markdown inline (**bold**, *italic*) para XML do ReportLab."""
+    import re
+    text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
+    text = re.sub(r'\*([^*]+?)\*',  r'<i>\1</i>', text)
+    # Escapa & que não faça parte de entidade XML
+    text = re.sub(r'&(?!amp;|lt;|gt;|quot;|apos;)', '&amp;', text)
+    return text
+
+
+def _md_to_elements(text: str, body_s, section_s, subsection_s, hr_fn, tbl_fn):
+    """Converte texto markdown simples em lista de flowables ReportLab."""
+    import re
+    from reportlab.platypus import Spacer
+    from reportlab.lib.units import cm
+
+    elements = []
+    lines    = text.split("\n")
+    i        = 0
+
+    while i < len(lines):
+        raw  = lines[i]
+        line = raw.strip()
+        i   += 1
+
+        if not line:
+            elements.append(Spacer(1, 0.12*cm))
+            continue
+
+        # H1: # Título
+        if line.startswith("# "):
+            elements.append(Paragraph(_md_inline(line[2:].strip()), section_s))
+            continue
+
+        # H2: ## Título
+        if line.startswith("## "):
+            elements.append(Paragraph(_md_inline(line[3:].strip()), subsection_s))
+            continue
+
+        # H3: ### Título  ou  **Título** (negrito sozinho na linha)
+        if line.startswith("### "):
+            elements.append(Paragraph(_md_inline(line[4:].strip()), subsection_s))
+            continue
+
+        if re.match(r'^\*\*[^*].+\*\*$', line):
+            elements.append(Paragraph(_md_inline(line), subsection_s))
+            continue
+
+        # Separador horizontal
+        if re.match(r'^[-*_]{3,}$', line):
+            elements.append(hr_fn())
+            continue
+
+        # Bloco de tabela markdown  | col | col |
+        if line.startswith("|"):
+            tbl_lines = [line]
+            while i < len(lines) and lines[i].strip().startswith("|"):
+                tbl_lines.append(lines[i].strip())
+                i += 1
+            # Remove linhas separadoras |---|---|
+            tbl_lines = [l for l in tbl_lines
+                         if not re.match(r'^\|[-:\s|]+\|$', l)]
+            if tbl_lines:
+                rows = []
+                for tl in tbl_lines:
+                    cells = [_md_inline(c.strip()) for c in tl.strip("|").split("|")]
+                    rows.append(cells)
+                if len(rows) >= 1:
+                    # normaliza número de colunas
+                    ncols = max(len(r) for r in rows)
+                    rows  = [r + [""] * (ncols - len(r)) for r in rows]
+                    header = rows[0]
+                    data   = rows[1:] if len(rows) > 1 else [[""] * ncols]
+                    elements.append(tbl_fn(header, data))
+            continue
+
+        # Parágrafo normal
+        elements.append(Paragraph(_md_inline(line), body_s))
+
+    return elements
+
+
 # ─── Geração do PDF ───────────────────────────────────────────────────────────
 
 def _build_pdf(req: ReportRequest) -> bytes:
@@ -148,13 +230,13 @@ def _build_pdf(req: ReportRequest) -> bytes:
     title_style = ParagraphStyle("APMTitle", parent=styles["Title"],
         fontSize=20, textColor=DARK_BLUE, spaceAfter=2, fontName="Helvetica-Bold")
     section_style = ParagraphStyle("APMSection", parent=styles["Heading2"],
-        fontSize=11, textColor=MID_BLUE, spaceBefore=12, spaceAfter=4,
+        fontSize=11, textColor=MID_BLUE, spaceBefore=16, spaceAfter=6,
         fontName="Helvetica-Bold")
     subsection_style = ParagraphStyle("APMSub2", parent=styles["Heading3"],
-        fontSize=10, textColor=DARK_BLUE, spaceBefore=8, spaceAfter=3,
+        fontSize=10, textColor=DARK_BLUE, spaceBefore=10, spaceAfter=4,
         fontName="Helvetica-Bold")
     body_style = ParagraphStyle("APMBody", parent=styles["Normal"],
-        fontSize=9, textColor=BLACK, spaceAfter=3)
+        fontSize=9, textColor=BLACK, spaceAfter=5, leading=13)
     caption_style = ParagraphStyle("APMCaption", parent=styles["Normal"],
         fontSize=8, textColor=GRAY, spaceAfter=2)
     alert_style = ParagraphStyle("APMAlert", parent=styles["Normal"],
@@ -419,15 +501,15 @@ def _build_pdf(req: ReportRequest) -> bytes:
             story.append(Paragraph("<b>Sumário Executivo:</b>", body_style))
             story.append(Paragraph(sumario, body_style))
 
-        # Diagnóstico técnico
+        # Diagnóstico técnico — renderiza markdown corretamente
         diag = presc.get("diagnostico", "")
         if diag:
-            story.append(Spacer(1, 0.2*cm))
-            story.append(Paragraph("<b>Diagnóstico Técnico:</b>", body_style))
-            for line in diag.split("\n"):
-                line = line.strip()
-                if line:
-                    story.append(Paragraph(line, body_style))
+            story.append(Spacer(1, 0.25*cm))
+            story.append(Paragraph("<b>Diagnóstico Técnico</b>", subsection_style))
+            story.append(Spacer(1, 0.1*cm))
+            story.extend(_md_to_elements(
+                diag, body_style, section_style, subsection_style, _hr, _tbl,
+            ))
 
         # Tabela de ações priorizadas
         acoes = presc.get("acoes", [])
@@ -465,7 +547,7 @@ def _build_pdf(req: ReportRequest) -> bytes:
                 detail_rows = [
                     ["Causa Raiz",       a.get("causa_raiz", "—")],
                     ["Mecanismo",        a.get("mecanismo", "—")],
-                    ["Boundary",         a.get("boundary", "—")],
+                    ["Fronteira",        a.get("boundary", "—")],
                     ["Ação Recomendada", a.get("acao_recomendada", "—")],
                     ["Justificativa",    a.get("justificativa", "—")],
                     ["Custo Relativo",   f"{a.get('custo_relativo', 1.0):.1f}×"],

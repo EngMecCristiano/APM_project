@@ -281,29 +281,48 @@ div[data-testid="stThumbValue"] {{ color: #63DCF7 !important; font-size: 11px !i
     margin-top: 8px !important;
 }}
 
-/* ── Mobile — sidebar 100% e gráficos sem zoom por toque ───────────────── */
+/* ── Previne reload por pull-to-refresh em qualquer dispositivo ─────────── */
+html, body {{
+    overscroll-behavior-y: contain !important;
+}}
+
+/* ── Mobile (≤ 768px) — sidebar 100%, sem zoom por toque ───────────────── */
 @media (max-width: 768px) {{
     section[data-testid="stSidebar"] {{
         width: 100vw !important;
         min-width: 100vw !important;
     }}
-    /* Botão de fechar sidebar — destaque maior no mobile */
+    /* Botão de fechar sidebar — área de toque maior, menos chance de erro */
     button[data-testid="baseButton-header"] {{
         background: rgba(0,212,255,0.15) !important;
         border: 1px solid rgba(0,212,255,0.4) !important;
         border-radius: 8px !important;
         color: #63DCF7 !important;
-        font-size: 16px !important;
-        padding: 8px 14px !important;
+        font-size: 18px !important;
+        padding: 12px 20px !important;
+        min-width: 48px !important;
+        min-height: 48px !important;
     }}
-    /* Desativa zoom por pinça nos gráficos Plotly no mobile */
+    /* Desativa zoom por pinça nos gráficos Plotly */
     .js-plotly-plot .plotly .main-svg {{
         touch-action: pan-y !important;
     }}
     /* Aumenta área de toque nos sliders */
     div[data-baseweb="slider"] div[role="slider"] {{
-        width: 22px !important;
-        height: 22px !important;
+        width: 24px !important;
+        height: 24px !important;
+    }}
+    /* Previne cliques acidentais no overlay que fecha a sidebar */
+    [data-testid="stSidebarNavItems"] {{
+        pointer-events: auto !important;
+    }}
+}}
+
+/* ── Tablet (769px–1100px) — sidebar mais larga ─────────────────────────── */
+@media (min-width: 769px) and (max-width: 1100px) {{
+    section[data-testid="stSidebar"] {{
+        width: 360px !important;
+        min-width: 360px !important;
     }}
 }}
 

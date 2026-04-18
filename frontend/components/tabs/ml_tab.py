@@ -524,8 +524,9 @@ def _plot_prescriptive_pareto(acoes: list) -> go.Figure:
             range=[0, 115],
             showgrid=False,
         ),
-        legend=dict(orientation="v", x=1.05, y=1.0, xanchor="left", font=dict(size=10)),
-        margin=dict(t=70, b=70, l=50, r=60),
+        legend=dict(orientation="h", x=0.5, y=-0.22, xanchor="center", yanchor="top",
+                    font=dict(size=11)),
+        margin=dict(t=60, b=90, l=50, r=50),
         bargap=0.25,
     )
     return fig
