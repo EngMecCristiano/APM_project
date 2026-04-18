@@ -161,7 +161,7 @@ def _update_index(tag: str, meta: Dict[str, Any], total: int) -> None:
         "tipo_equipamento":  meta.get("tipo_equipamento", "—"),
         "numero_serie":      meta.get("numero_serie", "—"),
         "total_registros":   total,
-        "ultima_atualizacao": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "ultima_atualizacao": datetime.now().strftime("%d/%m/%Y %H:%M"),
     }
     with open(INDEX_FILE, "w") as f:
         json.dump(index, f, ensure_ascii=False, indent=2)

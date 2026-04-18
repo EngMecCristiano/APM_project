@@ -207,7 +207,7 @@ def _build_pdf(req: ReportRequest) -> bytes:
         ["Responsável Manutenção",    meta.get("responsavel_manutencao") or "—",
          "Data do Estudo",            meta.get("data_estudo") or "—"],
         ["Horímetro Atual",           f"{meta.get('horimetro_atual', 0):.0f} h",
-         "Gerado em",                 datetime.now().strftime("%Y-%m-%d %H:%M")],
+         "Gerado em",                 datetime.now().strftime("%d/%m/%Y %H:%M")],
     ]
     tbl_id = Table(id_rows, colWidths=[3.8*cm, 5.2*cm, 4.0*cm, 4.5*cm])
     tbl_id.setStyle(TableStyle([
@@ -506,7 +506,7 @@ def _build_pdf(req: ReportRequest) -> bytes:
     story.append(_hr())
     story.append(Paragraph(
         f"Gerado automaticamente pelo APM Analytics (AR²) — "
-        f"{datetime.now().strftime('%Y-%m-%d %H:%M')} — ISO 14224:2016",
+        f"{datetime.now().strftime('%d/%m/%Y %H:%M')} — ISO 14224:2016",
         caption_style,
     ))
     story.append(Paragraph(

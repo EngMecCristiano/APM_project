@@ -178,16 +178,16 @@ class RichSyntheticGenerator:
 
         current_dt = t0
         for i in range(n_samples):
-            data_inicio.append(current_dt.strftime("%Y-%m-%d %H:%M"))
+            data_inicio.append(current_dt.strftime("%d/%m/%Y %H:%M"))
             horimetro_ini.append(horimetro_inicio)
 
             dt_evento = current_dt + timedelta(hours=float(tbf[i]))
-            data_evento.append(dt_evento.strftime("%Y-%m-%d %H:%M"))
+            data_evento.append(dt_evento.strftime("%d/%m/%Y %H:%M"))
             horimetro_evt.append(horimetro_inicio + tbf[i])
 
             if falha[i] == 1:
                 dt_retorno = dt_evento + timedelta(hours=float(ttr[i]))
-                data_retorno.append(dt_retorno.strftime("%Y-%m-%d %H:%M"))
+                data_retorno.append(dt_retorno.strftime("%d/%m/%Y %H:%M"))
                 current_dt = dt_retorno
             else:
                 data_retorno.append("")
