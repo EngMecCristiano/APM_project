@@ -99,6 +99,7 @@ def _md_to_elements(text: str, body_s, section_s, subsection_s, hr_fn, tbl_fn):
 
         # Bloco de tabela markdown  | col | col |
         if line.startswith("|"):
+            from reportlab.platypus import Paragraph as _Para
             tbl_lines = [line]
             while i < len(lines) and lines[i].strip().startswith("|"):
                 tbl_lines.append(lines[i].strip())
@@ -109,14 +110,15 @@ def _md_to_elements(text: str, body_s, section_s, subsection_s, hr_fn, tbl_fn):
             if tbl_lines:
                 rows = []
                 for tl in tbl_lines:
-                    cells = [_md_inline(c.strip()) for c in tl.strip("|").split("|")]
+                    cells = [_Para(_md_inline(c.strip()), body_s)
+                             for c in tl.strip("|").split("|")]
                     rows.append(cells)
                 if len(rows) >= 1:
                     # normaliza número de colunas
                     ncols = max(len(r) for r in rows)
-                    rows  = [r + [""] * (ncols - len(r)) for r in rows]
+                    rows  = [r + [_Para("", body_s)] * (ncols - len(r)) for r in rows]
                     header = rows[0]
-                    data   = rows[1:] if len(rows) > 1 else [[""] * ncols]
+                    data   = rows[1:] if len(rows) > 1 else [[_Para("", body_s)] * ncols]
                     elements.append(tbl_fn(header, data))
             continue
 

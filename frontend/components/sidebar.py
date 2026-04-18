@@ -164,7 +164,7 @@ Após executar a análise completa:
             modelo = st.text_input("Modelo / Referência", value="",
                                    placeholder="ex: LT110, MBH-300")
             data_inst = st.text_input("Data de Instalação", value="",
-                                      placeholder="AAAA-MM-DD")
+                                      placeholder="DD/MM/AAAA")
             class_amb = st.selectbox(
                 "Classificação Ambiental",
                 options=ENVIRONMENTAL_CLASSIFICATIONS,
@@ -338,7 +338,7 @@ def _render_rich_simulator(
     aging   = st.slider("Fadiga Sistêmica (%)",     0.0,  5.0, 0.0, 0.1, key="rich_aging")
     st.divider()
 
-    start_date = st.date_input("Data de Início do Histórico", value=datetime(2021, 1, 1))
+    start_date = st.date_input("Data de Início do Histórico", value=datetime(2021, 1, 1), format="DD/MM/YYYY")
     preco_t    = st.number_input("Valor do Produto (R$/t)", value=45.0, step=5.0,
                                  help="Usado para calcular lucro cessante por parada.")
 
